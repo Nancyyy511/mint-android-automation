@@ -1,19 +1,25 @@
-Mint Android Automation Framework
+# Mint Android Automation Framework
 
-Tools:
+Automation framework for Mint mobile trading application.
+
+## Tech Stack
+- Java
 - Appium
 - Selenium
 - TestNG
-- Java
 - Maven
 
-Flows Automated:
+## Test Coverage
 - Onboarding
 - Login
-- Buy Orders
-- Sell Orders
+- Buy Crypto
+- Sell Crypto
 - End-to-End Trading Flow
 
-Framework Design:
+## Framework Design
 - Page Object Model
 - TestNG Runner
+- Maven Build
+
+## CI/CD
+GitHub Actions pipeline runs automation tests automatically on push.
