@@ -44,7 +44,7 @@ public class T11_EndToEndTradingFlowTest2 extends BaseTest {
 
         sellPre.openBuySellBottomSheet();
         sellPre.chooseSell();
-        sellPre.chooseAccount();4
+        sellPre.chooseAccount();
         sellPre.searchForTicker("OFH");
         sellPre.selectTicker("OFH");
         sellPre.assertSellPageOpened();

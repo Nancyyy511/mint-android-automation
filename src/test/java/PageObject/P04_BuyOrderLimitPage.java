@@ -41,7 +41,7 @@ public class P04_BuyOrderLimitPage extends Core {
 
     public void enterQuantity(String qty) {
 
-        WebElement quantity = wait.until(
+        WebElement quantity = wait().until(
                 ExpectedConditions.elementToBeClickable(quantityInput)
         );
 
@@ -49,7 +49,7 @@ public class P04_BuyOrderLimitPage extends Core {
         quantity.clear();
         quantity.sendKeys(qty);
         try {
-            driver.hideKeyboard();
+            driver().hideKeyboard();
         } catch (Exception ignored) {}
 
         tapOutside();
@@ -59,7 +59,7 @@ public class P04_BuyOrderLimitPage extends Core {
 
     public void enterSetPrice(String price) {
 
-        WebElement setPrice = wait.until(
+        WebElement setPrice = wait().until(
                 ExpectedConditions.elementToBeClickable(setPriceInput)
         );
 
@@ -67,14 +67,14 @@ public class P04_BuyOrderLimitPage extends Core {
         setPrice.clear();
         setPrice.sendKeys(price);
         try {
-            driver.hideKeyboard();
+            driver().hideKeyboard();
         } catch (Exception ignored) {}
 
         tapOutside();
     }
 
     public String getValue() {
-        return wait.until(
+        return wait().until(
                 ExpectedConditions.visibilityOfElementLocated(valueText)
         ).getText();
 
@@ -83,14 +83,14 @@ public class P04_BuyOrderLimitPage extends Core {
 
     public void scrollToReviewOrder() {
 
-        int width = driver.manage().window().getSize().width;
-        int height = driver.manage().window().getSize().height;
+        int width = driver().manage().window().getSize().width;
+        int height = driver().manage().window().getSize().height;
 
         int startX = width / 2;
         int startY = (int) (height * 0.7);
         int endY   = (int) (height * 0.3);
 
-        new io.appium.java_client.TouchAction<>(driver)
+        new io.appium.java_client.TouchAction<>(driver())
                 .press(io.appium.java_client.touch.offset.PointOption.point(startX, startY))
                 .waitAction(io.appium.java_client.touch.WaitOptions.waitOptions(
                         java.time.Duration.ofMillis(600)))
@@ -101,7 +101,7 @@ public class P04_BuyOrderLimitPage extends Core {
 
 
     public void clickReviewOrder() {
-        wait.until(
+        wait().until(
                 ExpectedConditions.elementToBeClickable(reviewOrderBtn)
         ).click();
     }
@@ -123,15 +123,15 @@ public class P04_BuyOrderLimitPage extends Core {
 
         // ===== Assertions =====
         public void assertBuyLimitOrderDetails() {
-            Assert.assertTrue(driver.findElement(tickerName).isDisplayed(), "Ticker not visible");
-            Assert.assertTrue(driver.findElement(orderType).isDisplayed(), "Order type not Buy");
-            Assert.assertTrue(driver.findElement(priceValue).isDisplayed(), "Price not visible");
-            Assert.assertTrue(driver.findElement(submitBtn).isDisplayed(), "Submit not visible");
+            Assert.assertTrue(driver().findElement(tickerName).isDisplayed(), "Ticker not visible");
+            Assert.assertTrue(driver().findElement(orderType).isDisplayed(), "Order type not Buy");
+            Assert.assertTrue(driver().findElement(priceValue).isDisplayed(), "Price not visible");
+            Assert.assertTrue(driver().findElement(submitBtn).isDisplayed(), "Submit not visible");
         }
 
         // ===== Actions =====
         public void submitOrder() {
-            wait.until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
+            wait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
         }
 
 
@@ -142,7 +142,7 @@ public class P04_BuyOrderLimitPage extends Core {
                         "new UiSelector().textContains(\"Home\")");
 
         public void goToHome() {
-        WebElement btn = wait.until(
+        WebElement btn = wait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
         );
         btn.click();

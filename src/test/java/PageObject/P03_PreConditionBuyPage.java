@@ -58,11 +58,11 @@ public class P03_PreConditionBuyPage extends Core {
     // ===== Actions =====
 
     public void openBuySellBottomSheet() {
-        try { driver.hideKeyboard(); } catch (Exception ignored) {}
+        try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
         try {
             // Try dynamic element tap first
-            WebElement icon = wait.until(ExpectedConditions.visibilityOfElementLocated(
+            WebElement icon = wait().until(ExpectedConditions.visibilityOfElementLocated(
                     AppiumBy.xpath("//android.widget.FrameLayout[@content-desc=\"Buy/Sell\"]")
             ));
 
@@ -75,7 +75,7 @@ public class P03_PreConditionBuyPage extends Core {
             tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
             tap.addAction(new org.openqa.selenium.interactions.Pause(finger, Duration.ofMillis(150)));
             tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-            driver.perform(Collections.singletonList(tap));
+            driver().perform(Collections.singletonList(tap));
 
             System.out.println("Buy/Sell icon tapped dynamically by center");
 
@@ -87,16 +87,16 @@ public class P03_PreConditionBuyPage extends Core {
     }
 
     public void chooseBuy() {
-        wait.until(ExpectedConditions.elementToBeClickable(buyOption)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(buyOption)).click();
     }
 
     public void chooseAccount() {
-        wait.until(ExpectedConditions.elementToBeClickable(accountOption)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(accountOption)).click();
     }
 
     public void searchForTicker(String ticker) {
 
-        WebElement search = wait.until(
+        WebElement search = wait().until(
                 ExpectedConditions.elementToBeClickable(searchField)
         );
 
@@ -105,14 +105,14 @@ public class P03_PreConditionBuyPage extends Core {
         search.sendKeys(ticker);
 
 
-        driver.hideKeyboard();
+        driver().hideKeyboard();
 
         System.out.println("Ticker Typed: " + ticker);
     }
 
     public void selectFirstTickerByName(String ticker) {
 
-        WebElement tickerE1 = wait.until(
+        WebElement tickerE1 = wait().until(
                 ExpectedConditions.elementToBeClickable(tickerText(ticker))
 
         );
@@ -124,7 +124,7 @@ public class P03_PreConditionBuyPage extends Core {
     }
 
     public void assertBuyPageOpened() {
-        wait.until(ExpectedConditions.visibilityOfElementLocated(
+        wait().until(ExpectedConditions.visibilityOfElementLocated(
                 AppiumBy.androidUIAutomator(
                         "new UiSelector().textContains(\"Quantity\")"
                 )
@@ -133,11 +133,11 @@ public class P03_PreConditionBuyPage extends Core {
     }
 
     public void tapByScreenPercentage(double percentX, double percentY) {
-        Dimension size = driver.manage().window().getSize();
+        Dimension size = driver().manage().window().getSize();
         int x = (int) (size.width * percentX);
         int y = (int) (size.height * percentY);
 
-        new TouchAction<>(driver)
+        new TouchAction<>(driver())
                 .tap(PointOption.point(x, y))
                 .perform();
 

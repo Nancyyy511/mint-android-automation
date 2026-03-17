@@ -1,23 +1,21 @@
 package TestObject;
 
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Listeners;
 
 @Listeners(TestListener.class)
-public class BaseTest extends Core {
+public class BaseTest {
 
-    @BeforeSuite
-    public void startDriver() throws Exception {
+    @BeforeMethod(alwaysRun = true)
+    public void setUp() throws Exception {
         DriverManager.initializeDriver();
-        setDriver(DriverManager.getDriver(), DriverManager.getWait());
         System.out.println("App launched successfully");
     }
 
-    @AfterSuite
-    public void quitDriver() {
+    @AfterMethod(alwaysRun = true)
+    public void tearDown() {
         DriverManager.quitDriver();
-        setDriver(null, null);
         System.out.println("App closed");
     }
 }

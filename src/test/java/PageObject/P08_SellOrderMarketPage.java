@@ -24,19 +24,19 @@ public class P08_SellOrderMarketPage extends Core {
     }
 
     public void chooseMarket() {
-        wait.until(ExpectedConditions.elementToBeClickable(marketTab)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(marketTab)).click();
     }
 
     public void enterQuantity(String qty) {
-        wait.until(ExpectedConditions.elementToBeClickable(quantityInput)).sendKeys(qty);
+        wait().until(ExpectedConditions.elementToBeClickable(quantityInput)).sendKeys(qty);
     }
 
     public void chooseSettlement(String settlement) {
-        wait.until(ExpectedConditions.elementToBeClickable(settlementOption(settlement))).click();
+        wait().until(ExpectedConditions.elementToBeClickable(settlementOption(settlement))).click();
     }
 
     public void reviewOrder() {
-        wait.until(ExpectedConditions.elementToBeClickable(reviewBtn)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(reviewBtn)).click();
     }
 
     //---------- Go to home screen
@@ -45,7 +45,7 @@ public class P08_SellOrderMarketPage extends Core {
                     "new UiSelector().textContains(\"History\")");
 
     public void goToHistory() {
-        WebElement btn = wait.until(
+        WebElement btn = wait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHistoryBtn)
         );
         btn.click();

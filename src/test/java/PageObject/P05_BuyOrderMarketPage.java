@@ -24,20 +24,20 @@ public class P05_BuyOrderMarketPage extends Core {
 
     // ===== Actions =====
     public void chooseMarketPrice() {
-        wait.until(ExpectedConditions.elementToBeClickable(marketPriceTab)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(marketPriceTab)).click();
     }
 
     public void enterQuantity(String quantity) {
 
         WebElement qty =
-                wait.until(ExpectedConditions.elementToBeClickable(quantityField));
+                wait().until(ExpectedConditions.elementToBeClickable(quantityField));
 
         qty.click();
         qty.clear();
         qty.sendKeys(quantity);
 
         try {
-            driver.hideKeyboard();
+            driver().hideKeyboard();
         } catch (Exception ignored) {
         }
     }
@@ -45,7 +45,7 @@ public class P05_BuyOrderMarketPage extends Core {
 
 
     public void reviewOrder() {
-        wait.until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
     }
     //-----------------Review Order--------------------------
 
@@ -64,15 +64,15 @@ public class P05_BuyOrderMarketPage extends Core {
 
     // ===== Assertions =====
     public void assertBuyLimitOrderDetails() {
-        Assert.assertTrue(driver.findElement(tickerName).isDisplayed(), "Ticker not visible");
-        Assert.assertTrue(driver.findElement(orderType).isDisplayed(), "Order type not Buy");
-        Assert.assertTrue(driver.findElement(priceValue).isDisplayed(), "Price not visible");
-        Assert.assertTrue(driver.findElement(submitBtn).isDisplayed(), "Submit not visible");
+        Assert.assertTrue(driver().findElement(tickerName).isDisplayed(), "Ticker not visible");
+        Assert.assertTrue(driver().findElement(orderType).isDisplayed(), "Order type not Buy");
+        Assert.assertTrue(driver().findElement(priceValue).isDisplayed(), "Price not visible");
+        Assert.assertTrue(driver().findElement(submitBtn).isDisplayed(), "Submit not visible");
     }
 
     // ===== Actions =====
     public void submitOrder() {
-        wait.until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
     }
     //---------- Go to home screen
     private final By goToHomeBtn =
@@ -80,7 +80,7 @@ public class P05_BuyOrderMarketPage extends Core {
                     "new UiSelector().textContains(\"Home\")");
 
     public void goToHome() {
-        WebElement btn = wait.until(
+        WebElement btn = wait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
         );
         btn.click();

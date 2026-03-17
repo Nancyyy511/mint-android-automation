@@ -27,13 +27,26 @@ public final class ConfigReader {
         }
     }
 
-    public static String getProperty(String key) {
-        String value = PROPERTIES.getProperty(key);
+    public static String get(String key) {
+        String value = System.getProperty(key, PROPERTIES.getProperty(key));
 
         if (value == null || value.isBlank()) {
             throw new RuntimeException("Missing configuration value for key: " + key);
         }
 
         return value.trim();
+    }
+
+    public static int getInt(String key, int defaultValue) {
+        String value = System.getProperty(key, PROPERTIES.getProperty(key));
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Integer.parseInt(value.trim());
+    }
+
+    @Deprecated
+    public static String getProperty(String key) {
+        return get(key);
     }
 }

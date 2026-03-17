@@ -59,30 +59,30 @@ public class P07_SellOrderLimitPage extends Core {
     // ================= ACTIONS =================
 
     public void chooseLimit() {
-        wait.until(ExpectedConditions.elementToBeClickable(limitTab)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(limitTab)).click();
     }
 
     public void enterSellLimitOrder(int quantity, String settlement) {
 
-        wait.until(ExpectedConditions.visibilityOfElementLocated(limitTab));
+        wait().until(ExpectedConditions.visibilityOfElementLocated(limitTab));
         // Settlement
         scrollToReviewOrder();
 
         selectSettlement(settlement);
 
         // Quantity
-        WebElement qty = wait.until(ExpectedConditions.elementToBeClickable(quantityInput));
+        WebElement qty = wait().until(ExpectedConditions.elementToBeClickable(quantityInput));
         qty.click();
         qty.clear();
         qty.sendKeys(String.valueOf(quantity));
-        try { driver.hideKeyboard(); } catch (Exception ignored) {}
+        try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
         // Price
-        WebElement priceInput = wait.until(ExpectedConditions.elementToBeClickable(PriceInput));
+        WebElement priceInput = wait().until(ExpectedConditions.elementToBeClickable(PriceInput));
         priceInput.click();
         priceInput.clear();
         priceInput.sendKeys("94.00");
-        try { driver.hideKeyboard(); } catch (Exception ignored) {}
+        try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
 
         // Scroll
@@ -91,7 +91,7 @@ public class P07_SellOrderLimitPage extends Core {
 
 
     public void selectSettlement(String settlement) {
-        wait.until(
+        wait().until(
                 ExpectedConditions.elementToBeClickable(
                         settlementOption(settlement)
                 )
@@ -99,14 +99,14 @@ public class P07_SellOrderLimitPage extends Core {
     }
     public void scrollToReviewOrder() {
 
-        int width = driver.manage().window().getSize().width;
-        int height = driver.manage().window().getSize().height;
+        int width = driver().manage().window().getSize().width;
+        int height = driver().manage().window().getSize().height;
 
         int startX = width / 2;
         int startY = (int) (height * 0.75);
         int endY   = (int) (height * 0.35);
 
-        new io.appium.java_client.TouchAction<>(driver)
+        new io.appium.java_client.TouchAction<>(driver())
                 .press(io.appium.java_client.touch.offset.PointOption.point(startX, startY))
                 .waitAction(io.appium.java_client.touch.WaitOptions.waitOptions(
                         java.time.Duration.ofMillis(600)))
@@ -116,15 +116,15 @@ public class P07_SellOrderLimitPage extends Core {
     }
 
     public void clickReviewOrder() {
-        wait.until(ExpectedConditions.visibilityOfElementLocated(reviewOrderBtn));
-        wait.until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
+        wait().until(ExpectedConditions.visibilityOfElementLocated(reviewOrderBtn));
+        wait().until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
     }
 
 
 
 
     public void goToHome() {
-        WebElement btn = wait.until(
+        WebElement btn = wait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
         );
         btn.click();
@@ -146,13 +146,13 @@ public class P07_SellOrderLimitPage extends Core {
 
     // ===== Assertions =====
     public void assertSellLimitOrderDetails() {
-        Assert.assertTrue(driver.findElement(tickerName).isDisplayed(), "Ticker not visible");
-        Assert.assertTrue(driver.findElement(orderType).isDisplayed(), "Order type not Buy");
-        Assert.assertTrue(driver.findElement(priceValue).isDisplayed(), "Price not visible");
-        Assert.assertTrue(driver.findElement(submitBtn).isDisplayed(), "Submit not visible");
+        Assert.assertTrue(driver().findElement(tickerName).isDisplayed(), "Ticker not visible");
+        Assert.assertTrue(driver().findElement(orderType).isDisplayed(), "Order type not Buy");
+        Assert.assertTrue(driver().findElement(priceValue).isDisplayed(), "Price not visible");
+        Assert.assertTrue(driver().findElement(submitBtn).isDisplayed(), "Submit not visible");
     }
     public void submitOrder() {
-        wait.until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
+        wait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
     }
 
 

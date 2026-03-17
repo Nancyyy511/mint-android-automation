@@ -6,6 +6,6 @@ public final class TestDataReader {
     }
 
     public static String get(String key) {
-        return ConfigReader.getProperty(key);
+        return ConfigReader.get(key);
     }
 }

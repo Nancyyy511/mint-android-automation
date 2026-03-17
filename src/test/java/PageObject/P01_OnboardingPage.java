@@ -46,7 +46,7 @@ public class P01_OnboardingPage extends Core {
 
         // Click Let's get trading (fast)
         try {
-            new WebDriverWait(driver, Duration.ofSeconds(3))
+            new WebDriverWait(driver(), Duration.ofSeconds(3))
                     .until(ExpectedConditions.elementToBeClickable(letsGetTradingButton))
                     .click();
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class P01_OnboardingPage extends Core {
 
         // Login option
         try {
-            new WebDriverWait(driver, Duration.ofSeconds(3))
+            new WebDriverWait(driver(), Duration.ofSeconds(3))
                     .until(ExpectedConditions.elementToBeClickable(loginOption))
                     .click();
         } catch (Exception e) {

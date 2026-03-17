@@ -62,10 +62,10 @@ public class P02_LoginPage extends Core {
         waitForElement(passwordField).clear();
         waitForElement(passwordField).sendKeys(pass);
 
-        try { driver.hideKeyboard(); } catch (Exception ignored) {}
+        try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
         WebElement login =
-                new WebDriverWait(driver, Duration.ofSeconds(10))
+                new WebDriverWait(driver(), Duration.ofSeconds(10))
                         .until(ExpectedConditions.presenceOfElementLocated(loginButton));
 
         login.click();
@@ -77,7 +77,7 @@ public class P02_LoginPage extends Core {
             return;
         }
 
-        wait.until(ExpectedConditions.visibilityOfElementLocated(
+        wait().until(ExpectedConditions.visibilityOfElementLocated(
                 AppiumBy.className("android.widget.EditText")
         )).sendKeys("1");
 
@@ -86,7 +86,7 @@ public class P02_LoginPage extends Core {
 
     protected void tapNumericZero() {
 
-        Dimension size = driver.manage().window().getSize();
+        Dimension size = driver().manage().window().getSize();
 
         int x = size.width / 2;
         int y = (int) (size.height * 0.95);
@@ -103,7 +103,7 @@ public class P02_LoginPage extends Core {
         tap.addAction(new org.openqa.selenium.interactions.Pause(finger, Duration.ofMillis(150)));
         tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
 
-        driver.perform(Collections.singletonList(tap));
+        driver().perform(Collections.singletonList(tap));
     }
 
 
@@ -117,7 +117,7 @@ public class P02_LoginPage extends Core {
             tapNumericZero();
 
             try {
-                driver.hideKeyboard();
+                driver().hideKeyboard();
             } catch (Exception ignored) {}
 
 
