@@ -6,7 +6,7 @@ import PageObject.P06_PreConditionSellPage;
 import PageObject.P08_SellOrderMarketPage;
 import org.testng.annotations.Test;
 
-public class T08_SellOrderMarketTest extends Core{
+public class T08_SellOrderMarketTest extends BaseTest{
     @Test
     public void sellMarketOrderSuccessfully() {
         P01_OnboardingPage onboarding = new P01_OnboardingPage();

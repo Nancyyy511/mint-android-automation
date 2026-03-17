@@ -2,7 +2,6 @@ package TestObject;
 
 import io.appium.java_client.TouchAction;
 import io.appium.java_client.android.AndroidDriver;
-import io.appium.java_client.android.options.UiAutomator2Options;
 import io.appium.java_client.touch.TapOptions;
 import io.appium.java_client.touch.WaitOptions;
 import io.appium.java_client.touch.offset.ElementOption;
@@ -13,10 +12,7 @@ import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
 
-import java.net.URL;
 import java.time.Duration;
 import java.util.Collections;
 
@@ -25,42 +21,9 @@ public class Core {
     protected static AndroidDriver driver;
     protected static WebDriverWait wait;
 
-    @BeforeSuite
-
-
-    public void openApp() throws Exception {
-
-        if (driver == null) {
-
-            UiAutomator2Options options = new UiAutomator2Options();
-            options.setPlatformName("Android");
-            options.setCapability("udid", "ZLIBRWOB6DL7Q8OB");
-            options.setCapability("deviceName", "Redmi 13C"); //
-
-            options.setAutomationName("UiAutomator2");
-            options.setAppPackage("com.cf_holding.mint.app");
-            options.setAppActivity("com.cf_holding.mint.app.ui.main.MainActivity");
-            options.setApp("C:\\Users\\nawny\\Downloads\\Mint_production_2.1.3.apk");
-            options.autoGrantPermissions();
-            options.setCapability("unicodeKeyboard", false);
-            options.setCapability("resetKeyboard", true);
-            options.setCapability("newCommandTimeout", 300);
-            options.setCapability("uiautomator2ServerInstallTimeout", 60000);
-            options.setCapability("uiautomator2ServerLaunchTimeout", 60000);
-            options.setCapability("adbExecTimeout", 60000);
-            options.setCapability("autoAcceptAlerts", true);
-            options.setCapability("disableWindowAnimation", true);
-            options.setCapability("ignoreHiddenApiPolicyError", true);
-
-
-            driver = new AndroidDriver(
-                    new URL("http://127.0.0.1:4723/wd/hub"),
-                    options
-            );
-
-            wait = new WebDriverWait(driver, Duration.ofSeconds(6));
-            System.out.println("App launched successfully");
-        }
+    protected static void setDriver(AndroidDriver androidDriver, WebDriverWait webDriverWait) {
+        driver = androidDriver;
+        wait = webDriverWait;
     }
 
     // ========= Helper Methods =========
@@ -213,19 +176,5 @@ public class Core {
         swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
 
         driver.perform(Collections.singletonList(swipe));
-    }
-
-
-
-    // ========= Close App =========
-
-    @AfterSuite
-    public void closeApp() throws InterruptedException {
-        if (driver != null) {
-           //Thread.sleep(1000);
-           // driver.quit();
-            //driver = null;
-            System.out.println("App closed");
-        }
     }
 }

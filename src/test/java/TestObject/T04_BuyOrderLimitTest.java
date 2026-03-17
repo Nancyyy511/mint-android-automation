@@ -6,7 +6,7 @@ import PageObject.P03_PreConditionBuyPage;
 import PageObject.P04_BuyOrderLimitPage;
 import org.testng.annotations.Test;
 
-public class T04_BuyOrderLimitTest extends Core {
+public class T04_BuyOrderLimitTest extends BaseTest {
 
     @Test
     public void buyLimitOrderSuccessfully() throws InterruptedException {

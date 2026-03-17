@@ -3,7 +3,7 @@ package TestObject;
 import PageObject.P03_PreConditionBuyPage;
 import org.testng.annotations.Test;
 
-public class T03_PreConditionBuyTest extends Core {
+public class T03_PreConditionBuyTest extends BaseTest {
 
     //@Test(priority = 3)
     public void openBuyOrderPageSuccessfully() throws InterruptedException {

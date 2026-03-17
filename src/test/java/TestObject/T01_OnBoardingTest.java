@@ -3,7 +3,7 @@ package TestObject;
 import PageObject.P01_OnboardingPage;
 import org.testng.annotations.Test;
 
-public class T01_OnBoardingTest extends Core {
+public class T01_OnBoardingTest extends BaseTest {
 
    //@Test(priority = 1)
     public void userCanCompleteOnboardingAndOpenLogin() {

@@ -6,7 +6,7 @@ import PageObject.P06_PreConditionSellPage;
 import PageObject.P07_SellOrderLimitPage;
 import org.testng.annotations.Test;
 
-public class T07_SellOrderLimitTest extends Core {
+public class T07_SellOrderLimitTest extends BaseTest {
     @Test
     public void sellLimitOrderSuccessfully() {
         P01_OnboardingPage onboarding = new P01_OnboardingPage();

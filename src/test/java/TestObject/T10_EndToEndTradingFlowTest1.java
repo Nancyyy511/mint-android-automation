@@ -5,7 +5,7 @@ import org.testng.annotations.Test;
 
 //Buy Market Sell Limit
 //T10_EndToEndTradingFlow1  → Buy Market + Sell Limit
-public class T10_EndToEndTradingFlowTest1 extends Core{
+public class T10_EndToEndTradingFlowTest1 extends BaseTest{
     @Test
     public void userCanBuyMarketThenSellSuccessfully() throws InterruptedException {
 

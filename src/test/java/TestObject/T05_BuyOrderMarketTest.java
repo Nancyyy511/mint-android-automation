@@ -4,7 +4,7 @@ import PageObject.P03_PreConditionBuyPage;
 import PageObject.P05_BuyOrderMarketPage;
 import org.testng.annotations.Test;
 
-public class T05_BuyOrderMarketTest extends Core {
+public class T05_BuyOrderMarketTest extends BaseTest {
    @Test
     public void buyMarketOrderSuccessfully() throws InterruptedException {
         P03_PreConditionBuyPage preConditionBuyPage =

@@ -4,7 +4,7 @@ import PageObject.*;
 import org.testng.annotations.Test;
 
 // Buy Market + Sell Market
-public class T11_EndToEndTradingFlowTest2 extends Core {
+public class T11_EndToEndTradingFlowTest2 extends BaseTest {
 
     @Test
     public void userCanBuyMarketThenSellMarketSuccessfully() {

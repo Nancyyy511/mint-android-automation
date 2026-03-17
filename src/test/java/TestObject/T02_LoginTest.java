@@ -5,7 +5,7 @@ import PageObject.P02_LoginPage;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class T02_LoginTest extends Core {
+public class T02_LoginTest extends BaseTest {
 
     //@Test
     public void userCanLoginSuccessfully() {

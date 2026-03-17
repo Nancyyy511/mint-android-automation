@@ -3,7 +3,7 @@ package TestObject;
 import PageObject.P06_PreConditionSellPage;
 import org.testng.annotations.Test;
 
-public class T06_PreConditionSellTest extends Core{
+public class T06_PreConditionSellTest extends BaseTest{
     //@Test
     public void openSellOrderSuccessfully() {
 
