@@ -1,26 +1,21 @@
 package PageObject;
 
-import TestObject.Core;
 import io.appium.java_client.AppiumBy;
-import io.appium.java_client.TouchAction;
-import io.appium.java_client.android.nativekey.AndroidKey;
-import io.appium.java_client.android.nativekey.KeyEvent;
-import io.appium.java_client.touch.offset.PointOption;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.PointerInput;
-import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-public class P03_PreConditionBuyPage extends Core {
+public class P03_PreConditionBuyPage extends BasePage {
+    private static final double BUY_SELL_ICON_X_PERCENT = 0.503;
+    private static final double BUY_SELL_ICON_Y_PERCENT = 0.911;
 
     // ===== Locators =====
+    private final By buySellIcon =
+            AppiumBy.accessibilityId("Buy/Sell");
+
+    private final By buySellIconFrame =
+            AppiumBy.xpath("//android.widget.FrameLayout[@content-desc=\"Buy/Sell\"]");
+
     private final By buyOption =
             AppiumBy.androidUIAutomator(
                     "new UiSelector().text(\"Buy\")"
@@ -46,9 +41,21 @@ public class P03_PreConditionBuyPage extends Core {
 
     private final By buyOrderHeader =
             AppiumBy.androidUIAutomator(
-                    "new UiSelector().textContains(\"Buy Order\")"
+                    "new UiSelector().text(\"Buy\")"
             );
 
+    private final By quantitySection =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().text(\"Quantity\")"
+            );
+
+    private final By custodianDropdownText =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().textContains(\"Custodian\")"
+            );
+
+    private final By custodianDropdownSpinner =
+            AppiumBy.className("android.widget.Spinner");
 
 
 
@@ -58,45 +65,38 @@ public class P03_PreConditionBuyPage extends Core {
     // ===== Actions =====
 
     public void openBuySellBottomSheet() {
-        try { driver().hideKeyboard(); } catch (Exception ignored) {}
+        hideKeyboardIfVisible();
 
         try {
-            // Try dynamic element tap first
-            WebElement icon = wait().until(ExpectedConditions.visibilityOfElementLocated(
-                    AppiumBy.xpath("//android.widget.FrameLayout[@content-desc=\"Buy/Sell\"]")
-            ));
-
-            int centerX = icon.getLocation().getX() + icon.getSize().getWidth() / 2;
-            int centerY = icon.getLocation().getY() + icon.getSize().getHeight() / 2;
-
-            PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-            Sequence tap = new Sequence(finger, 1);
-            tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), centerX, centerY));
-            tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-            tap.addAction(new org.openqa.selenium.interactions.Pause(finger, Duration.ofMillis(150)));
-            tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-            driver().perform(Collections.singletonList(tap));
-
-            System.out.println("Buy/Sell icon tapped dynamically by center");
-
+            WebElement icon = waitForBuySellIcon();
+            clickElementReliably(icon, "Buy/Sell icon");
         } catch (Exception e) {
-            // Fallback: tap by screen percentage
-            tapByScreenPercentage(0.5, 0.95);
-            System.out.println("Buy/Sell icon tapped by screen percentage fallback");
+            // Fallback to image-derived bottom-center Buy/Sell coordinates.
+            tapByScreenPercentage(BUY_SELL_ICON_X_PERCENT, BUY_SELL_ICON_Y_PERCENT);
+            pause(800);
+            return;
+        }
+    }
+
+    private WebElement waitForBuySellIcon() {
+        try {
+            return customWait().until(ExpectedConditions.visibilityOfElementLocated(buySellIcon));
+        } catch (Exception ignored) {
+            return customWait().until(ExpectedConditions.visibilityOfElementLocated(buySellIconFrame));
         }
     }
 
     public void chooseBuy() {
-        wait().until(ExpectedConditions.elementToBeClickable(buyOption)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(buyOption)).click();
     }
 
     public void chooseAccount() {
-        wait().until(ExpectedConditions.elementToBeClickable(accountOption)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(accountOption)).click();
     }
 
     public void searchForTicker(String ticker) {
 
-        WebElement search = wait().until(
+        WebElement search = customWait().until(
                 ExpectedConditions.elementToBeClickable(searchField)
         );
 
@@ -112,7 +112,7 @@ public class P03_PreConditionBuyPage extends Core {
 
     public void selectFirstTickerByName(String ticker) {
 
-        WebElement tickerE1 = wait().until(
+        WebElement tickerE1 = customWait().until(
                 ExpectedConditions.elementToBeClickable(tickerText(ticker))
 
         );
@@ -124,25 +124,50 @@ public class P03_PreConditionBuyPage extends Core {
     }
 
     public void assertBuyPageOpened() {
-        wait().until(ExpectedConditions.visibilityOfElementLocated(
-                AppiumBy.androidUIAutomator(
-                        "new UiSelector().textContains(\"Quantity\")"
-                )
-        ));
-        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(buyOrderHeader));
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(quantitySection));
     }
 
-    public void tapByScreenPercentage(double percentX, double percentY) {
-        Dimension size = driver().manage().window().getSize();
-        int x = (int) (size.width * percentX);
-        int y = (int) (size.height * percentY);
+    public void selectCustodian(String custodianName) {
+        System.out.println("Selecting custodian: " + custodianName);
 
-        new TouchAction<>(driver())
-                .tap(PointOption.point(x, y))
-                .perform();
+        By custodianOption = AppiumBy.androidUIAutomator(
+                "new UiSelector().textContains(\"" + custodianName + "\")"
+        );
 
-        System.out.println("Tapped screen at " + percentX + ", " + percentY);
+        try {
+            if (!clickFirstVisible(5, custodianDropdownText, custodianDropdownSpinner)) {
+                tapByScreenPercentage(0.50, 0.42);
+            }
+
+            waitForSeconds(10).until(driver ->
+                    !driver.findElements(custodianOption).isEmpty()
+            );
+
+            if (!clickIfVisible(custodianOption, 5)) {
+                waitForSeconds(5)
+                        .until(ExpectedConditions.elementToBeClickable(custodianOption))
+                        .click();
+            }
+        } catch (Exception exception) {
+            // Fallback: open dropdown and choose a center-list item by coordinates.
+            tapByScreenPercentage(0.50, 0.42);
+            waitForSeconds(4).until(driver ->
+                    !driver.findElements(custodianOption).isEmpty()
+                            || !driver.findElements(AppiumBy.className("android.widget.ListView")).isEmpty()
+            );
+            if (!clickIfVisible(custodianOption, 3)) {
+                tapByScreenPercentage(0.50, 0.58);
+            }
+        }
+
+        waitForSeconds(8).until(driver ->
+                !driver.findElements(AppiumBy.androidUIAutomator(
+                        "new UiSelector().textContains(\"" + custodianName + "\")"
+                )).isEmpty()
+        );
     }
+
 }
 
 

@@ -7,18 +7,17 @@ import org.testng.annotations.Test;
 //T10_EndToEndTradingFlow1  → Buy Market + Sell Limit
 public class T10_EndToEndTradingFlowTest1 extends BaseTest{
     @Test
-    public void userCanBuyMarketThenSellSuccessfully() throws InterruptedException {
+    public void userCanBuyMarketThenSellSuccessfully() {
 
-        // ===== Onboarding =====
-        P01_OnboardingPage onboarding = new P01_OnboardingPage();
-        onboarding.completeOnboardingAndGoToLogin();       // Choose Log in
+        new StartupFlow().completeStartupToLogin();
 
 
         // ===== Login =====
         P02_LoginPage login = new P02_LoginPage();
-        login.login("01282349004", "@Testing09");
+        login.login("01282349004", "@Testing08");
         login.handleSecurityQuestion();
         login.enterPinZeroFourTimes();
+        login.waitForHomeScreen();
 
 
         // ===== BUY MARKET =====
@@ -28,7 +27,6 @@ public class T10_EndToEndTradingFlowTest1 extends BaseTest{
         buyPre.openBuySellBottomSheet();
         buyPre.chooseBuy();
         buyPre.chooseAccount();
-        Thread.sleep(1000);
         buyPre.searchForTicker("OFH");
         buyPre.selectFirstTickerByName("OFH");
         buyPre.assertBuyPageOpened();
@@ -36,7 +34,7 @@ public class T10_EndToEndTradingFlowTest1 extends BaseTest{
         buyMarket.chooseMarketPrice();
         buyMarket.enterQuantity("1");
         buyMarket.reviewOrder();
-        buyMarket.assertBuyLimitOrderDetails();
+        buyMarket.assertBuyLimitOrderDetails("OFH");
         buyMarket.submitOrder();
 
 

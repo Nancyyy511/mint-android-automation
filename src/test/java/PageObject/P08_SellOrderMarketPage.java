@@ -1,12 +1,11 @@
 package PageObject;
 
-import TestObject.Core;
 import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
-public class P08_SellOrderMarketPage extends Core {
+public class P08_SellOrderMarketPage extends BasePage {
 
     private final By marketTab =
             AppiumBy.androidUIAutomator("new UiSelector().text(\"Market Price\")");
@@ -24,19 +23,19 @@ public class P08_SellOrderMarketPage extends Core {
     }
 
     public void chooseMarket() {
-        wait().until(ExpectedConditions.elementToBeClickable(marketTab)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(marketTab)).click();
     }
 
     public void enterQuantity(String qty) {
-        wait().until(ExpectedConditions.elementToBeClickable(quantityInput)).sendKeys(qty);
+        customWait().until(ExpectedConditions.elementToBeClickable(quantityInput)).sendKeys(qty);
     }
 
     public void chooseSettlement(String settlement) {
-        wait().until(ExpectedConditions.elementToBeClickable(settlementOption(settlement))).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(settlementOption(settlement))).click();
     }
 
     public void reviewOrder() {
-        wait().until(ExpectedConditions.elementToBeClickable(reviewBtn)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(reviewBtn)).click();
     }
 
     //---------- Go to home screen
@@ -45,7 +44,7 @@ public class P08_SellOrderMarketPage extends Core {
                     "new UiSelector().textContains(\"History\")");
 
     public void goToHistory() {
-        WebElement btn = wait().until(
+        WebElement btn = customWait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHistoryBtn)
         );
         btn.click();

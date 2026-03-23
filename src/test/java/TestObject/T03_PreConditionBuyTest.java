@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 public class T03_PreConditionBuyTest extends BaseTest {
 
     //@Test(priority = 3)
-    public void openBuyOrderPageSuccessfully() throws InterruptedException {
+    public void openBuyOrderPageSuccessfully() {
 
         P03_PreConditionBuyPage preCondition =
                 new P03_PreConditionBuyPage();
@@ -14,9 +14,6 @@ public class T03_PreConditionBuyTest extends BaseTest {
         preCondition.openBuySellBottomSheet();
         preCondition.chooseBuy();
         preCondition.chooseAccount();
-
-        Thread.sleep(1000);
-
         preCondition.searchForTicker("OFH");
         preCondition.selectFirstTickerByName("OFH");
         preCondition.assertBuyPageOpened();

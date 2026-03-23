@@ -1,13 +1,12 @@
 package PageObject;
 
-import TestObject.Core;
 import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.testng.Assert;
 
-public class P07_SellOrderLimitPage extends Core {
+public class P07_SellOrderLimitPage extends BasePage {
 
     // ===== Tabs =====
     private final By limitTab =
@@ -17,11 +16,8 @@ public class P07_SellOrderLimitPage extends Core {
 
     // ===== Fields =====
 
-    // Quantity input ( EditText)
     private final By quantityInput =
-            AppiumBy.androidUIAutomator(
-                    "new UiSelector().className(\"android.widget.EditText\").instance(0)"
-            );
+            AppiumBy.xpath("//android.widget.TextView[@text=\"Quantity\"]/following::android.widget.EditText[1]");
 
     // Market price
     private final By marketPrice =
@@ -29,11 +25,21 @@ public class P07_SellOrderLimitPage extends Core {
                     "new UiSelector().textMatches(\"[0-9]+(\\\\.[0-9]+)?\")"
             );
 
-    //  price input
-    private final By PriceInput =
+    private final By priceInput =
+            AppiumBy.xpath("//android.widget.TextView[@text=\"Set price\"]/following::android.widget.EditText[1]");
+
+    private final By useMaxButton =
             AppiumBy.androidUIAutomator(
-                    "new UiSelector().className(\"android.widget.EditText\").instance(1)"
+                    "new UiSelector().textMatches(\"(?i)use max\")"
             );
+
+    private final By useMaxConfirmationTitle =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().textContains(\"Are You Sure\")"
+            );
+
+    private final By useMaxConfirmationButton =
+            AppiumBy.xpath("//*[(@text=\"Use max\" or @text=\"Use Max\") and (@class=\"android.widget.Button\" or @class=\"android.widget.TextView\")]");
 
     // Value field (readonly)
     private final By valueField =
@@ -55,47 +61,71 @@ public class P07_SellOrderLimitPage extends Core {
             AppiumBy.androidUIAutomator(
                     "new UiSelector().textContains(\"Home\")"
             );
+    private final By goToHistoryBtn =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().text(\"Go To Orders History\")"
+            );
 
     // ================= ACTIONS =================
 
     public void chooseLimit() {
-        wait().until(ExpectedConditions.elementToBeClickable(limitTab)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(limitTab)).click();
     }
 
-    public void enterSellLimitOrder(int quantity, String settlement) {
+    public void enterSellLimitOrder(int quantity, String price) {
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(limitTab));
 
-        wait().until(ExpectedConditions.visibilityOfElementLocated(limitTab));
-        // Settlement
-        scrollToReviewOrder();
-
-        selectSettlement(settlement);
-
-        // Quantity
-        WebElement qty = wait().until(ExpectedConditions.elementToBeClickable(quantityInput));
+        WebElement qty = customWait().until(ExpectedConditions.elementToBeClickable(quantityInput));
         qty.click();
         qty.clear();
         qty.sendKeys(String.valueOf(quantity));
         try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
-        // Price
-        WebElement priceInput = wait().until(ExpectedConditions.elementToBeClickable(PriceInput));
-        priceInput.click();
-        priceInput.clear();
-        priceInput.sendKeys("94.00");
+        WebElement priceField = customWait().until(ExpectedConditions.elementToBeClickable(priceInput));
+        priceField.click();
+        priceField.clear();
+        priceField.sendKeys(price);
         try { driver().hideKeyboard(); } catch (Exception ignored) {}
 
-
-        // Scroll
         scrollToReviewOrder();
+    }
+
+    public void enterSellLimitPrice(String price) {
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(limitTab));
+
+        WebElement priceField = customWait().until(ExpectedConditions.elementToBeClickable(priceInput));
+        priceField.click();
+        priceField.clear();
+        priceField.sendKeys(price);
+        try { driver().hideKeyboard(); } catch (Exception ignored) {}
+        tapOutside();
+    }
+
+    public void tapUseMax() {
+        WebElement useMax = customWait().until(
+                ExpectedConditions.elementToBeClickable(useMaxButton)
+        );
+        clickElementReliably(useMax, "Sell Use Max");
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(useMaxConfirmationTitle));
+    }
+
+    public void confirmUseMax() {
+        WebElement confirm = customWait().until(
+                ExpectedConditions.elementToBeClickable(useMaxConfirmationButton)
+        );
+        clickElementReliably(confirm, "Sell Use Max confirmation");
     }
 
 
     public void selectSettlement(String settlement) {
-        wait().until(
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(limitTab));
+        scrollToReviewOrder();
+        customWait().until(
                 ExpectedConditions.elementToBeClickable(
                         settlementOption(settlement)
                 )
         ).click();
+        pause(500);
     }
     public void scrollToReviewOrder() {
 
@@ -116,16 +146,23 @@ public class P07_SellOrderLimitPage extends Core {
     }
 
     public void clickReviewOrder() {
-        wait().until(ExpectedConditions.visibilityOfElementLocated(reviewOrderBtn));
-        wait().until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(reviewOrderBtn));
+        customWait().until(ExpectedConditions.elementToBeClickable(reviewOrderBtn)).click();
     }
 
 
 
 
     public void goToHome() {
-        WebElement btn = wait().until(
+        WebElement btn = customWait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
+        );
+        btn.click();
+    }
+
+    public void goToHistory() {
+        WebElement btn = customWait().until(
+                ExpectedConditions.visibilityOfElementLocated(goToHistoryBtn)
         );
         btn.click();
     }
@@ -152,7 +189,7 @@ public class P07_SellOrderLimitPage extends Core {
         Assert.assertTrue(driver().findElement(submitBtn).isDisplayed(), "Submit not visible");
     }
     public void submitOrder() {
-        wait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
+        customWait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
     }
 
 

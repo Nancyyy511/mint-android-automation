@@ -9,16 +9,15 @@ public class T11_EndToEndTradingFlowTest2 extends BaseTest {
     @Test
     public void userCanBuyMarketThenSellMarketSuccessfully() {
 
-        // ===== Onboarding =====
-        P01_OnboardingPage onboarding = new P01_OnboardingPage();
-        onboarding.completeOnboardingAndGoToLogin();      // Choose Log in
+        new StartupFlow().completeStartupToLogin();
 
 
         // ===== Login =====
         P02_LoginPage login = new P02_LoginPage();
-        login.login("01282349004", "@Testing09");
+        login.login("01282349004", "@Testing08");
         login.handleSecurityQuestion();
         login.enterPinZeroFourTimes();
+        login.waitForHomeScreen();
         // ===== BUY MARKET =====
         P03_PreConditionBuyPage buyPre = new P03_PreConditionBuyPage();
         P05_BuyOrderMarketPage buyMarket = new P05_BuyOrderMarketPage();

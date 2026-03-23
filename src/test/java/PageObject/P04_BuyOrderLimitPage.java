@@ -1,34 +1,35 @@
 package PageObject;
 
-import TestObject.Core;
 import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.testng.Assert;
 
-public class P04_BuyOrderLimitPage extends Core {
+public class P04_BuyOrderLimitPage extends BasePage {
 
     // ===== Locators =====
-
-
-    private final By quantityField =
-            AppiumBy.androidUIAutomator(
-                    "new UiSelector().textContains(\"Quantity\")"
-            );
-
     private final By quantityInput =
-            AppiumBy.className("android.widget.EditText");
+            AppiumBy.xpath("//android.widget.TextView[@text=\"Quantity\"]/following::android.widget.EditText[1]");
 
     private final By setPriceInput =
-            AppiumBy.androidUIAutomator(
-                    "new UiSelector().className(\"android.widget.EditText\").instance(1)"
-            );
+            AppiumBy.xpath("//android.widget.TextView[@text=\"Set price\"]/following::android.widget.EditText[1]");
 
     private final By valueText =
+            AppiumBy.xpath("//android.widget.TextView[@text=\"Value\"]/following::android.widget.TextView[contains(@text,\"EGP\")][1]");
+
+    private final By useMaxButton =
             AppiumBy.androidUIAutomator(
-                    "new UiSelector().textContains(\"EGP\")"
+                    "new UiSelector().textMatches(\"(?i)use max\")"
             );
+
+    private final By useMaxConfirmationTitle =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().textContains(\"Are You Sure\")"
+            );
+
+    private final By useMaxConfirmationButton =
+            AppiumBy.xpath("//*[(@text=\"Use max\" or @text=\"Use Max\") and (@class=\"android.widget.Button\" or @class=\"android.widget.TextView\")]");
 
 
     private final By reviewOrderBtn =
@@ -40,8 +41,7 @@ public class P04_BuyOrderLimitPage extends Core {
     // ===== Actions =====
 
     public void enterQuantity(String qty) {
-
-        WebElement quantity = wait().until(
+        WebElement quantity = customWait().until(
                 ExpectedConditions.elementToBeClickable(quantityInput)
         );
 
@@ -57,9 +57,24 @@ public class P04_BuyOrderLimitPage extends Core {
 
     }
 
+    public void tapUseMax() {
+        WebElement useMax = customWait().until(
+                ExpectedConditions.elementToBeClickable(useMaxButton)
+        );
+        clickElementReliably(useMax, "Use Max");
+        customWait().until(ExpectedConditions.visibilityOfElementLocated(useMaxConfirmationTitle));
+    }
+
+    public void confirmUseMax() {
+        WebElement confirm = customWait().until(
+                ExpectedConditions.elementToBeClickable(useMaxConfirmationButton)
+        );
+        clickElementReliably(confirm, "Use Max confirmation");
+    }
+
     public void enterSetPrice(String price) {
 
-        WebElement setPrice = wait().until(
+        WebElement setPrice = customWait().until(
                 ExpectedConditions.elementToBeClickable(setPriceInput)
         );
 
@@ -74,7 +89,7 @@ public class P04_BuyOrderLimitPage extends Core {
     }
 
     public String getValue() {
-        return wait().until(
+        return customWait().until(
                 ExpectedConditions.visibilityOfElementLocated(valueText)
         ).getText();
 
@@ -101,7 +116,7 @@ public class P04_BuyOrderLimitPage extends Core {
 
 
     public void clickReviewOrder() {
-        wait().until(
+        customWait().until(
                 ExpectedConditions.elementToBeClickable(reviewOrderBtn)
         ).click();
     }
@@ -109,9 +124,6 @@ public class P04_BuyOrderLimitPage extends Core {
     //-----------------Review Order--------------------------
 
         // ===== Locators =====
-        private final By tickerName =
-                AppiumBy.androidUIAutomator("new UiSelector().text(\"OFH\")");
-
         private final By orderType =
                 AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Buy\")");
 
@@ -122,16 +134,17 @@ public class P04_BuyOrderLimitPage extends Core {
                 AppiumBy.androidUIAutomator("new UiSelector().text(\"Submit\")");
 
         // ===== Assertions =====
-        public void assertBuyLimitOrderDetails() {
-            Assert.assertTrue(driver().findElement(tickerName).isDisplayed(), "Ticker not visible");
-            Assert.assertTrue(driver().findElement(orderType).isDisplayed(), "Order type not Buy");
-            Assert.assertTrue(driver().findElement(priceValue).isDisplayed(), "Price not visible");
-            Assert.assertTrue(driver().findElement(submitBtn).isDisplayed(), "Submit not visible");
+        public void assertBuyLimitOrderDetails(String ticker) {
+            By reviewTicker = AppiumBy.androidUIAutomator("new UiSelector().text(\"" + ticker + "\")");
+            Assert.assertTrue(isElementDisplayed(reviewTicker), "Ticker not visible");
+            Assert.assertTrue(isElementDisplayed(orderType), "Order type not Buy");
+            Assert.assertTrue(isElementDisplayed(priceValue), "Price not visible");
+            Assert.assertTrue(isElementDisplayed(submitBtn), "Submit not visible");
         }
 
         // ===== Actions =====
         public void submitOrder() {
-            wait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
+            customWait().until(ExpectedConditions.elementToBeClickable(submitBtn)).click();
         }
 
 
@@ -141,11 +154,22 @@ public class P04_BuyOrderLimitPage extends Core {
                 AppiumBy.androidUIAutomator(
                         "new UiSelector().textContains(\"Home\")");
 
+        private final By goToHistoryBtn =
+                AppiumBy.androidUIAutomator(
+                        "new UiSelector().text(\"Go To Orders History\")");
+
         public void goToHome() {
-        WebElement btn = wait().until(
+        WebElement btn = customWait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
         );
         btn.click();
+        }
+
+        public void goToHistory() {
+            WebElement btn = customWait().until(
+                    ExpectedConditions.visibilityOfElementLocated(goToHistoryBtn)
+            );
+            btn.click();
         }
 }
 

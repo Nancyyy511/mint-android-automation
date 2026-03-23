@@ -2,18 +2,51 @@ package TestObject;
 
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.options.UiAutomator2Options;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public final class DriverManager {
+    private static final int DEFAULT_ADB_EXEC_TIMEOUT_MS = 120000;
+    private static final int DEFAULT_DEVICE_READY_TIMEOUT_MS = 120000;
+    private static final int DEFAULT_DEVICE_READY_POLL_MS = 2000;
+    private static final int DEFAULT_DRIVER_INIT_RETRIES = 3;
+    private static final int DEFAULT_DRIVER_RETRY_DELAY_MS = 5000;
+    private static final int DEFAULT_ADB_COMMAND_TIMEOUT_MS = 30000;
+    private static final int DEFAULT_UIAUTOMATOR2_SERVER_INSTALL_TIMEOUT_MS = 120000;
+    private static final int DEFAULT_UIAUTOMATOR2_SERVER_LAUNCH_TIMEOUT_MS = 60000;
+    private static final int DEFAULT_ANDROID_INSTALL_TIMEOUT_MS = 120000;
 
     private static final ThreadLocal<AndroidDriver> DRIVER = new ThreadLocal<>();
     private static final ThreadLocal<WebDriverWait> WAIT = new ThreadLocal<>();
+    private static final ThreadLocal<SessionConfig> SESSION_CONFIG =
+            ThreadLocal.withInitial(SessionConfig::fromConfig);
 
     private DriverManager() {
+    }
+
+    public static void configureSession(String deviceName, String udid, Integer systemPort) {
+        SessionConfig defaults = SessionConfig.fromConfig();
+        SESSION_CONFIG.set(new SessionConfig(
+                isBlank(deviceName) ? defaults.deviceName() : deviceName.trim(),
+                isBlank(udid) ? defaults.udid() : udid.trim(),
+                systemPort == null ? defaults.systemPort() : systemPort,
+                ConfigReader.getInt("adbExecTimeoutMs", DEFAULT_ADB_EXEC_TIMEOUT_MS)
+        ));
+    }
+
+    public static SessionConfig getSessionConfig() {
+        return SESSION_CONFIG.get();
     }
 
     public static void initializeDriver() throws MalformedURLException {
@@ -21,28 +54,148 @@ public final class DriverManager {
             return;
         }
 
+        SessionConfig sessionConfig = getSessionConfig();
+        URL appiumServerUrl = new URL(ConfigReader.get("appiumServer"));
+        int maxAttempts = Math.max(1, ConfigReader.getInt("driverInitRetries", DEFAULT_DRIVER_INIT_RETRIES));
+        int retryDelayMs = Math.max(0, ConfigReader.getInt("driverInitRetryDelayMs", DEFAULT_DRIVER_RETRY_DELAY_MS));
+        RuntimeException lastFailure = null;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            logDeviceStatus(sessionConfig, "before session attempt " + attempt);
+            waitUntilDeviceReady(sessionConfig);
+
+            UiAutomator2Options options = buildOptions(sessionConfig);
+            FlowLogger.step("DRIVER", "Starting Appium session attempt " + attempt + "/" + maxAttempts
+                    + " for deviceName=" + sessionConfig.deviceName()
+                    + ", udid=" + sessionConfig.udid()
+                    + ", systemPort=" + sessionConfig.systemPort()
+                    + ", adbExecTimeout=" + sessionConfig.adbExecTimeoutMs());
+            try {
+                AndroidDriver driver = new AndroidDriver(appiumServerUrl, options);
+                disableHardwareKeyboardIme(driver);
+                setDriver(driver);
+                setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds", 6))));
+                FlowLogger.step("DRIVER", "Appium session created successfully for udid="
+                        + sessionConfig.udid() + ", systemPort=" + sessionConfig.systemPort());
+                return;
+            } catch (WebDriverException exception) {
+                lastFailure = exception;
+                FlowLogger.step("DRIVER", "Session creation failed on attempt " + attempt + "/" + maxAttempts
+                        + " for udid=" + sessionConfig.udid() + ": " + summarizeException(exception));
+                cleanupFailedInitialization();
+                if (attempt < maxAttempts) {
+                    sleep(retryDelayMs);
+                }
+            }
+        }
+
+        throw lastFailure;
+    }
+
+    private static UiAutomator2Options buildOptions(SessionConfig sessionConfig) {
         UiAutomator2Options options = new UiAutomator2Options();
         options.setPlatformName(ConfigReader.get("platformName"));
-        options.setCapability("udid", ConfigReader.get("udid"));
-        options.setCapability("deviceName", ConfigReader.get("deviceName"));
+        options.setCapability("udid", sessionConfig.udid());
+        options.setCapability("deviceName", sessionConfig.deviceName());
         options.setAutomationName(ConfigReader.get("automationName"));
         options.setAppPackage(ConfigReader.get("appPackage"));
         options.setAppActivity(ConfigReader.get("appActivity"));
-        options.setApp(ConfigReader.get("appPath"));
+        if (ConfigReader.getInt("useAppBinary", 0) == 1) {
+            FlowLogger.step("DRIVER", "Warning: APK installation is enabled via useAppBinary=1. This will slow session startup.");
+            options.setApp(ConfigReader.get("appPath"));
+        }
         options.autoGrantPermissions();
         options.setCapability("unicodeKeyboard", false);
         options.setCapability("resetKeyboard", true);
         options.setCapability("newCommandTimeout", 300);
-        options.setCapability("uiautomator2ServerInstallTimeout", 60000);
-        options.setCapability("uiautomator2ServerLaunchTimeout", 60000);
-        options.setCapability("adbExecTimeout", 60000);
+        options.setCapability("uiautomator2ServerInstallTimeout", ConfigReader.getInt(
+                "uiautomator2ServerInstallTimeoutMs",
+                DEFAULT_UIAUTOMATOR2_SERVER_INSTALL_TIMEOUT_MS
+        ));
+        options.setCapability("uiautomator2ServerLaunchTimeout", ConfigReader.getInt(
+                "uiautomator2ServerLaunchTimeoutMs",
+                DEFAULT_UIAUTOMATOR2_SERVER_LAUNCH_TIMEOUT_MS
+        ));
+        options.setCapability("androidInstallTimeout", ConfigReader.getInt(
+                "androidInstallTimeoutMs",
+                DEFAULT_ANDROID_INSTALL_TIMEOUT_MS
+        ));
+        options.setCapability("adbExecTimeout", sessionConfig.adbExecTimeoutMs());
+        options.setCapability("noReset", true);
+        options.setCapability("fullReset", false);
+        options.setCapability("dontStopAppOnReset", true);
+        options.setCapability("skipDeviceInitialization", true);
+        options.setCapability("skipServerInstallation", ConfigReader.getBoolean("skipServerInstallation", false));
         options.setCapability("autoAcceptAlerts", true);
         options.setCapability("disableWindowAnimation", true);
         options.setCapability("ignoreHiddenApiPolicyError", true);
+        options.setCapability("systemPort", sessionConfig.systemPort());
+        return options;
+    }
 
-        AndroidDriver driver = new AndroidDriver(new URL(ConfigReader.get("appiumServer")), options);
-        setDriver(driver);
-        setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds", 6))));
+    private static void waitUntilDeviceReady(SessionConfig sessionConfig) {
+        int timeoutMs = Math.max(1000, ConfigReader.getInt("deviceReadyTimeoutMs", DEFAULT_DEVICE_READY_TIMEOUT_MS));
+        int pollMs = Math.max(500, ConfigReader.getInt("deviceReadyPollMs", DEFAULT_DEVICE_READY_POLL_MS));
+        Instant deadline = Instant.now().plusMillis(timeoutMs);
+
+        runAdbCommand(sessionConfig, "wait-for-device");
+        while (Instant.now().isBefore(deadline)) {
+            String adbState = runAdbCommand(sessionConfig, "get-state").stdout();
+            String sysBootCompleted = runAdbShell(sessionConfig, "getprop", "sys.boot_completed").stdout();
+            String devBootComplete = runAdbShell(sessionConfig, "getprop", "dev.bootcomplete").stdout();
+            String bootAnimation = runAdbShell(sessionConfig, "getprop", "init.svc.bootanim").stdout();
+            String bootAnimationExit = runAdbShell(sessionConfig, "getprop", "service.bootanim.exit").stdout();
+
+            boolean ready = "device".equalsIgnoreCase(adbState)
+                    && "1".equals(sysBootCompleted)
+                    && ("1".equals(devBootComplete) || devBootComplete.isBlank())
+                    && ("stopped".equalsIgnoreCase(bootAnimation) || bootAnimation.isBlank())
+                    && ("1".equals(bootAnimationExit) || bootAnimationExit.isBlank());
+            if (ready) {
+                FlowLogger.step("DRIVER", "Device ready for session start: udid=" + sessionConfig.udid()
+                        + ", adbState=" + adbState
+                        + ", sys.boot_completed=" + sysBootCompleted
+                        + ", dev.bootcomplete=" + devBootComplete
+                        + ", bootanim=" + bootAnimation
+                        + ", service.bootanim.exit=" + bootAnimationExit);
+                return;
+            }
+
+            FlowLogger.step("DRIVER", "Waiting for device readiness: udid=" + sessionConfig.udid()
+                    + ", adbState=" + adbState
+                    + ", sys.boot_completed=" + sysBootCompleted
+                    + ", dev.bootcomplete=" + devBootComplete
+                    + ", bootanim=" + bootAnimation
+                    + ", service.bootanim.exit=" + bootAnimationExit);
+            sleep(pollMs);
+        }
+
+        throw new RuntimeException("Timed out waiting for device readiness for udid=" + sessionConfig.udid());
+    }
+
+    private static void logDeviceStatus(SessionConfig sessionConfig, String phase) {
+        AdbCommandResult state = runAdbCommand(sessionConfig, "get-state");
+        AdbCommandResult model = runAdbShell(sessionConfig, "getprop", "ro.product.model");
+        AdbCommandResult bootCompleted = runAdbShell(sessionConfig, "getprop", "sys.boot_completed");
+        FlowLogger.step("DRIVER", "Device status " + phase + ": udid=" + sessionConfig.udid()
+                + ", adbState=" + state.stdout()
+                + ", model=" + model.stdout()
+                + ", sys.boot_completed=" + bootCompleted.stdout());
+        if (!state.stderr().isBlank()) {
+            FlowLogger.step("DRIVER", "ADB stderr " + phase + ": " + state.stderr());
+        }
+    }
+
+    private static void disableHardwareKeyboardIme(AndroidDriver driver) {
+        try {
+            driver.executeScript("mobile: shell", Map.of(
+                    "command", "settings",
+                    "args", List.of("put", "secure", "show_ime_with_hard_keyboard", "0")
+            ));
+            FlowLogger.step("DRIVER", "Disabled Android hardware keyboard IME overlay");
+        } catch (Exception exception) {
+            FlowLogger.step("DRIVER", "Could not disable Android hardware keyboard IME overlay");
+        }
     }
 
     public static AndroidDriver getDriver() {
@@ -78,6 +231,133 @@ public final class DriverManager {
         } finally {
             DRIVER.remove();
             WAIT.remove();
+            SESSION_CONFIG.remove();
+            FlowLogger.step("DRIVER", "Driver disposed for thread " + Thread.currentThread().threadId());
         }
+    }
+
+    private static void cleanupFailedInitialization() {
+        AndroidDriver driver = getDriver();
+        try {
+            if (driver != null) {
+                driver.quit();
+            }
+        } catch (Exception exception) {
+            FlowLogger.step("DRIVER", "Ignoring cleanup failure after unsuccessful session creation: "
+                    + summarizeException(exception));
+        } finally {
+            DRIVER.remove();
+            WAIT.remove();
+        }
+    }
+
+    private static AdbCommandResult runAdbShell(SessionConfig sessionConfig, String... shellArgs) {
+        String[] command = new String[shellArgs.length + 1];
+        command[0] = "shell";
+        System.arraycopy(shellArgs, 0, command, 1, shellArgs.length);
+        return runAdbCommand(sessionConfig, command);
+    }
+
+    private static AdbCommandResult runAdbCommand(SessionConfig sessionConfig, String... args) {
+        List<String> command = new ArrayList<>();
+        command.add("adb");
+        command.add("-s");
+        command.add(sessionConfig.udid());
+        for (String arg : args) {
+            command.add(arg);
+        }
+
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.redirectErrorStream(false);
+        try {
+            Process process = builder.start();
+            int commandTimeoutMs = Math.max(1000, ConfigReader.getInt("adbCommandTimeoutMs", DEFAULT_ADB_COMMAND_TIMEOUT_MS));
+            boolean finished = process.waitFor(commandTimeoutMs, TimeUnit.MILLISECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new RuntimeException("adb command timed out after " + commandTimeoutMs + "ms: "
+                        + String.join(" ", command));
+            }
+            String stdout = readStream(process.inputReader());
+            String stderr = readStream(process.errorReader());
+            int exitCode = process.exitValue();
+            return new AdbCommandResult(exitCode, stdout.trim(), stderr.trim());
+        } catch (IOException exception) {
+            throw new RuntimeException("Failed to execute adb command. Ensure adb is installed and on PATH.", exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("adb command interrupted", exception);
+        }
+    }
+
+    private static String readStream(BufferedReader reader) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (!builder.isEmpty()) {
+                builder.append(System.lineSeparator());
+            }
+            builder.append(line);
+        }
+        return builder.toString();
+    }
+
+    private static String summarizeException(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return exception.getClass().getSimpleName();
+        }
+        return message.replaceAll("\\s+", " ").trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static void sleep(int delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Sleep interrupted", exception);
+        }
+    }
+
+    public record SessionConfig(String deviceName, String udid, int systemPort, int adbExecTimeoutMs) {
+        static SessionConfig fromConfig() {
+            String udid = ConfigReader.get("udid");
+            String deviceName = ConfigReader.getOptional("deviceName", udid);
+            int systemPort = ConfigReader.getInt("systemPort", resolveSystemPort(udid));
+            int adbExecTimeoutMs = ConfigReader.getInt("adbExecTimeoutMs", DEFAULT_ADB_EXEC_TIMEOUT_MS);
+            return new SessionConfig(deviceName, udid, systemPort, adbExecTimeoutMs);
+        }
+
+        private static int resolveSystemPort(String udid) {
+            int numericSuffix = extractNumericSuffix(udid);
+            if (numericSuffix >= 0) {
+                return 8200 + ((numericSuffix / 2) % 100);
+            }
+            long threadId = Thread.currentThread().threadId();
+            return 8200 + (int) (threadId % 100);
+        }
+
+        private static int extractNumericSuffix(String value) {
+            if (value == null || value.isBlank()) {
+                return -1;
+            }
+
+            int cursor = value.length() - 1;
+            while (cursor >= 0 && Character.isDigit(value.charAt(cursor))) {
+                cursor--;
+            }
+
+            if (cursor == value.length() - 1) {
+                return -1;
+            }
+            return Integer.parseInt(value.substring(cursor + 1));
+        }
+    }
+
+    private record AdbCommandResult(int exitCode, String stdout, String stderr) {
     }
 }

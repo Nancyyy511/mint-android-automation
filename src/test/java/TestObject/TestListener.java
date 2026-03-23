@@ -1,6 +1,7 @@
 package TestObject;
 
 import io.qameta.allure.Allure;
+import org.testng.IConfigurationListener;
 import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
@@ -11,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
-public class TestListener implements ITestListener {
+public class TestListener implements ITestListener, IConfigurationListener {
 
     private static final Logger LOGGER = Logger.getLogger(TestListener.class.getName());
 
@@ -49,7 +50,38 @@ public class TestListener implements ITestListener {
     }
 
     @Override
+    public void onTestSkipped(ITestResult result) {
+        LOGGER.warning("Skipped test: " + result.getMethod().getMethodName());
+        if (result.getThrowable() != null) {
+            LOGGER.warning("Skip reason: " + summarizeThrowable(result.getThrowable()));
+        } else {
+            LOGGER.warning("Skip reason: this test was most likely skipped because a configuration method failed earlier.");
+        }
+    }
+
+    @Override
+    public void onConfigurationFailure(ITestResult result) {
+        String methodName = result.getMethod() == null ? "<unknown>" : result.getMethod().getMethodName();
+        LOGGER.severe("Configuration failure in " + methodName);
+        if (result.getThrowable() != null) {
+            LOGGER.severe(summarizeThrowable(result.getThrowable()));
+        }
+    }
+
+    @Override
     public void onFinish(ITestContext context) {
         LOGGER.info("Finished suite: " + context.getName());
+    }
+
+    private String summarizeThrowable(Throwable throwable) {
+        Throwable root = throwable;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        String message = root.getMessage();
+        if (message == null || message.isBlank()) {
+            return root.getClass().getSimpleName();
+        }
+        return message;
     }
 }

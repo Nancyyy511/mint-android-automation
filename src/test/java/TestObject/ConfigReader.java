@@ -45,6 +45,22 @@ public final class ConfigReader {
         return Integer.parseInt(value.trim());
     }
 
+    public static boolean getBoolean(String key, boolean defaultValue) {
+        String value = System.getProperty(key, PROPERTIES.getProperty(key));
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
+
+    public static String getOptional(String key, String defaultValue) {
+        String value = System.getProperty(key, PROPERTIES.getProperty(key));
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return value.trim();
+    }
+
     @Deprecated
     public static String getProperty(String key) {
         return get(key);
