@@ -43,9 +43,20 @@ public class P08_SellOrderMarketPage extends BasePage {
             AppiumBy.androidUIAutomator(
                     "new UiSelector().textContains(\"History\")");
 
+    private final By goToHomeBtn =
+            AppiumBy.androidUIAutomator(
+                    "new UiSelector().textContains(\"Home\")");
+
     public void goToHistory() {
         WebElement btn = customWait().until(
                 ExpectedConditions.visibilityOfElementLocated(goToHistoryBtn)
+        );
+        btn.click();
+    }
+
+    public void goToHome() {
+        WebElement btn = customWait().until(
+                ExpectedConditions.visibilityOfElementLocated(goToHomeBtn)
         );
         btn.click();
     }

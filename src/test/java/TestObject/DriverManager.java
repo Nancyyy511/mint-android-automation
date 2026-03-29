@@ -55,7 +55,7 @@ public final class DriverManager {
         }
 
         SessionConfig sessionConfig = getSessionConfig();
-        URL appiumServerUrl = new URL(ConfigReader.get("appiumServer"));
+        List<URL> appiumServerUrls = resolveAppiumServerUrls();
         int maxAttempts = Math.max(1, ConfigReader.getInt("driverInitRetries", DEFAULT_DRIVER_INIT_RETRIES));
         int retryDelayMs = Math.max(0, ConfigReader.getInt("driverInitRetryDelayMs", DEFAULT_DRIVER_RETRY_DELAY_MS));
         RuntimeException lastFailure = null;
@@ -65,27 +65,43 @@ public final class DriverManager {
             waitUntilDeviceReady(sessionConfig);
 
             UiAutomator2Options options = buildOptions(sessionConfig);
-            FlowLogger.step("DRIVER", "Starting Appium session attempt " + attempt + "/" + maxAttempts
-                    + " for deviceName=" + sessionConfig.deviceName()
-                    + ", udid=" + sessionConfig.udid()
-                    + ", systemPort=" + sessionConfig.systemPort()
-                    + ", adbExecTimeout=" + sessionConfig.adbExecTimeoutMs());
-            try {
-                AndroidDriver driver = new AndroidDriver(appiumServerUrl, options);
-                disableHardwareKeyboardIme(driver);
-                setDriver(driver);
-                setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds", 6))));
-                FlowLogger.step("DRIVER", "Appium session created successfully for udid="
-                        + sessionConfig.udid() + ", systemPort=" + sessionConfig.systemPort());
-                return;
-            } catch (WebDriverException exception) {
-                lastFailure = exception;
-                FlowLogger.step("DRIVER", "Session creation failed on attempt " + attempt + "/" + maxAttempts
-                        + " for udid=" + sessionConfig.udid() + ": " + summarizeException(exception));
-                cleanupFailedInitialization();
-                if (attempt < maxAttempts) {
-                    sleep(retryDelayMs);
+            for (int urlIndex = 0; urlIndex < appiumServerUrls.size(); urlIndex++) {
+                URL appiumServerUrl = appiumServerUrls.get(urlIndex);
+                FlowLogger.step("DRIVER", "Starting Appium session attempt " + attempt + "/" + maxAttempts
+                        + " using server=" + appiumServerUrl
+                        + ", deviceName=" + sessionConfig.deviceName()
+                        + ", udid=" + sessionConfig.udid()
+                        + ", systemPort=" + sessionConfig.systemPort()
+                        + ", adbExecTimeout=" + sessionConfig.adbExecTimeoutMs());
+                try {
+                    AndroidDriver driver = new AndroidDriver(appiumServerUrl, options);
+                    disableHardwareKeyboardIme(driver);
+                    setDriver(driver);
+                    setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds", 6))));
+                    FlowLogger.step("DRIVER", "Appium session created successfully for udid="
+                            + sessionConfig.udid() + ", systemPort=" + sessionConfig.systemPort()
+                            + ", server=" + appiumServerUrl);
+                    return;
+                } catch (WebDriverException exception) {
+                    lastFailure = exception;
+                    FlowLogger.step("DRIVER", "Session creation failed on attempt " + attempt + "/" + maxAttempts
+                            + " using server=" + appiumServerUrl
+                            + " for udid=" + sessionConfig.udid() + ": " + summarizeException(exception));
+                    cleanupFailedInitialization();
+
+                    boolean hasAlternateServerUrl = urlIndex < appiumServerUrls.size() - 1;
+                    if (hasAlternateServerUrl && isSessionEndpointNotFound(exception)) {
+                        FlowLogger.step("DRIVER", "Received HTTP 404 while creating the session. "
+                                + "Retrying with alternate Appium base path.");
+                        continue;
+                    }
+
+                    break;
                 }
+            }
+
+            if (attempt < maxAttempts) {
+                sleep(retryDelayMs);
             }
         }
 
@@ -105,8 +121,6 @@ public final class DriverManager {
             options.setApp(ConfigReader.get("appPath"));
         }
         options.autoGrantPermissions();
-        options.setCapability("unicodeKeyboard", false);
-        options.setCapability("resetKeyboard", true);
         options.setCapability("newCommandTimeout", 300);
         options.setCapability("uiautomator2ServerInstallTimeout", ConfigReader.getInt(
                 "uiautomator2ServerInstallTimeoutMs",
@@ -126,10 +140,13 @@ public final class DriverManager {
         options.setCapability("dontStopAppOnReset", true);
         options.setCapability("skipDeviceInitialization", true);
         options.setCapability("skipServerInstallation", ConfigReader.getBoolean("skipServerInstallation", false));
-        options.setCapability("autoAcceptAlerts", true);
         options.setCapability("disableWindowAnimation", true);
         options.setCapability("ignoreHiddenApiPolicyError", true);
         options.setCapability("systemPort", sessionConfig.systemPort());
+        String remoteAdbHost = ConfigReader.getOptional("remoteAdbHost", "");
+        if (!remoteAdbHost.isBlank()) {
+            options.setCapability("remoteAdbHost", remoteAdbHost);
+        }
         return options;
     }
 
@@ -308,6 +325,37 @@ public final class DriverManager {
             return exception.getClass().getSimpleName();
         }
         return message.replaceAll("\\s+", " ").trim();
+    }
+
+    private static List<URL> resolveAppiumServerUrls() throws MalformedURLException {
+        URL configuredUrl = new URL(ConfigReader.get("appiumServer"));
+        List<URL> urls = new ArrayList<>();
+        urls.add(configuredUrl);
+
+        String normalizedPath = normalizePath(configuredUrl.getPath());
+        if (normalizedPath.isEmpty()) {
+            urls.add(withPath(configuredUrl, "/wd/hub"));
+        } else if ("/wd/hub".equals(normalizedPath)) {
+            urls.add(withPath(configuredUrl, ""));
+        }
+
+        return urls;
+    }
+
+    private static URL withPath(URL url, String path) throws MalformedURLException {
+        return new URL(url.getProtocol(), url.getHost(), url.getPort(), path);
+    }
+
+    private static String normalizePath(String path) {
+        if (path == null || path.isBlank() || "/".equals(path)) {
+            return "";
+        }
+        return path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+    }
+
+    private static boolean isSessionEndpointNotFound(WebDriverException exception) {
+        String message = summarizeException(exception);
+        return message.contains("Response code 404");
     }
 
     private static boolean isBlank(String value) {

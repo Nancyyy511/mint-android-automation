@@ -6,6 +6,7 @@ import org.openqa.selenium.InvalidElementStateException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
@@ -24,6 +25,12 @@ public class P10_TopUpPage extends BasePage {
 
     private final By portfolioValueLabel =
             AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Portfolio value\")");
+
+    private final By purchasePowerLabel =
+            AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Purchase Power\")");
+
+    private final By egpAmountText =
+            AppiumBy.xpath("//*[contains(@text,\"EGP\") or contains(@text,\"egp\")]");
 
     private final By addMoneyTitle =
             AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Add money\")");
@@ -249,9 +256,90 @@ public class P10_TopUpPage extends BasePage {
         return isWalletScreenDisplayed() || isHomeScreenDisplayed();
     }
 
+    public BigDecimal getWalletBalance() {
+        ensureHomeScreenForWalletBalance();
+        revealPurchasePowerCard();
+
+        WebElement label = waitForElement(purchasePowerLabel, 10);
+        String balanceText = resolvePurchasePowerValueText(label);
+        if (balanceText == null || balanceText.isBlank()) {
+            throw new RuntimeException("Purchase Power balance text was not found on the home screen");
+        }
+
+        return new BigDecimal(balanceText.replaceAll("[^0-9.]", ""));
+    }
+
     private void waitForWalletScreenLoaded() {
         waitForElement(walletIcon, 15);
         waitForElement(topUpButton, 15);
+    }
+
+    private void ensureHomeScreenForWalletBalance() {
+        if (isHomeScreenDisplayed() || isVisibleQuick(purchasePowerLabel, 3)) {
+            return;
+        }
+
+        if (isWalletScreenDisplayed()) {
+            retryClick(homeNavLabel, "Home tab", 2);
+            waitForSeconds(10).until(driver -> isHomeScreenDisplayed() || isVisibleQuick(purchasePowerLabel, 2));
+        }
+
+        if (!isHomeScreenDisplayed() && !isVisibleQuick(purchasePowerLabel, 5)) {
+            throw new RuntimeException("Home screen with Purchase Power is not visible for wallet balance validation");
+        }
+    }
+
+    private void revealPurchasePowerCard() {
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            if (isVisibleQuick(purchasePowerLabel, 2)) {
+                return;
+            }
+            safeSwipeLeft();
+            pause(500);
+        }
+
+        if (!isVisibleQuick(purchasePowerLabel, 3)) {
+            throw new RuntimeException("Purchase Power card did not become visible on the home screen");
+        }
+    }
+
+    private String resolvePurchasePowerValueText(WebElement label) {
+        int labelCenterY = label.getRect().getY() + label.getRect().getHeight() / 2;
+        int labelCenterX = label.getRect().getX() + label.getRect().getWidth() / 2;
+
+        List<WebElement> candidates = driver().findElements(egpAmountText).stream()
+                .filter(element -> {
+                    try {
+                        return element.isDisplayed();
+                    } catch (Exception ignored) {
+                        return false;
+                    }
+                })
+                .filter(element -> {
+                    int elementCenterY = element.getRect().getY() + element.getRect().getHeight() / 2;
+                    return Math.abs(elementCenterY - labelCenterY) <= 120;
+                })
+                .filter(element -> {
+                    int elementCenterX = element.getRect().getX() + element.getRect().getWidth() / 2;
+                    return elementCenterX >= labelCenterX;
+                })
+                .sorted((left, right) -> Integer.compare(
+                        right.getRect().getX() + right.getRect().getWidth(),
+                        left.getRect().getX() + left.getRect().getWidth()
+                ))
+                .toList();
+
+        for (WebElement candidate : candidates) {
+            try {
+                String text = candidate.getText();
+                if (text != null && text.matches(".*\\d.*")) {
+                    return text.trim();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
     }
 
     private void waitForReturnDestinationLoaded() {

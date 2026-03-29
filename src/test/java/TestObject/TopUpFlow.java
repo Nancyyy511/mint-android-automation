@@ -1,11 +1,13 @@
 package TestObject;
 
 import PageObject.P02_LoginPage;
+import PageObject.P11_VerifyPinPage;
 import PageObject.P10_TopUpPage;
 
 import java.nio.file.Path;
 
 public class TopUpFlow {
+    private final P11_VerifyPinPage verifyPinPage = new P11_VerifyPinPage();
 
     public enum TopUpState {
         SUCCESS,
@@ -61,6 +63,7 @@ public class TopUpFlow {
         logStart("Top Up flow");
         try {
             P10_TopUpPage topUpPage = new P10_TopUpPage();
+            verifyPinPage.handleVerifyPinIfPresent();
             topUpPage.openWallet();
             topUpPage.clickTopUp();
             topUpPage.selectInstapay();
@@ -75,7 +78,9 @@ public class TopUpFlow {
             topUpPage.submitTopUp();
             topUpPage.verifySuccessScreen();
             state = topUpPage.isSuccessScreenDisplayed() ? TopUpState.SUCCESS : TopUpState.UNKNOWN;
+            verifyPinPage.handleVerifyPinIfPresent();
             topUpPage.returnToHome();
+            verifyPinPage.handleVerifyPinIfPresent();
             returnedHome = topUpPage.isReturnedHome();
 
             if (state != TopUpState.SUCCESS || !returnedHome) {

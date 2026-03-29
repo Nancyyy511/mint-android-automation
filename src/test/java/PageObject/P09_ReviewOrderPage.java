@@ -5,6 +5,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class P09_ReviewOrderPage extends BasePage {
@@ -38,6 +39,21 @@ public class P09_ReviewOrderPage extends BasePage {
 
     private final By orderStatusPending =
             AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Pending\")");
+
+    private final By orderStatusExecuted =
+            AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Executed\")");
+
+    private final By orderStatusRejected =
+            AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Rejected\")");
+
+    private final By orderIdLabel =
+            AppiumBy.androidUIAutomator("new UiSelector().textMatches(\"(?i).*order\\s*id.*\")");
+
+    private final By filterButton =
+            AppiumBy.androidUIAutomator("new UiSelector().textMatches(\"(?i).*filter.*\")");
+
+    private final By clearFilterButton =
+            AppiumBy.androidUIAutomator("new UiSelector().textMatches(\"(?i).*(clear|reset).*\")");
 
     private By tickerText(String ticker) {
         return AppiumBy.androidUIAutomator(
@@ -165,5 +181,154 @@ public class P09_ReviewOrderPage extends BasePage {
             return;
         }
         throw new RuntimeException("Could not navigate back to Home from the current screen.");
+    }
+
+    public String openLatestVisibleOrderAndGetId() {
+        openHistoryFromCurrentScreen();
+
+        WebElement latestOrder = findLatestVisibleOrderRow();
+        clickElementReliably(latestOrder, "Latest visible order");
+        waitForSeconds(8).until(driver ->
+                isElementDisplayed(orderStatusPending)
+                        || isElementDisplayed(orderStatusExecuted)
+                        || isElementDisplayed(orderStatusRejected)
+                        || isElementDisplayed(editButton)
+                        || isElementDisplayed(repeatButton)
+        );
+        return extractOrderIdFromCurrentDetails();
+    }
+
+    public String getOrderStatusFromHistory(String orderId) {
+        if (isVisibleQuick(orderStatusPending, 2)) {
+            return "Pending";
+        }
+        if (isVisibleQuick(orderStatusExecuted, 2)) {
+            return "Executed";
+        }
+        if (isVisibleQuick(orderStatusRejected, 2)) {
+            return "Rejected";
+        }
+
+        openHistoryFromCurrentScreen();
+
+        if (orderId != null && !orderId.isBlank() && isVisibleQuick(orderIdText(orderId), 4)) {
+            click(orderIdText(orderId));
+            waitForOrderDetails(orderId);
+        } else if (orderId == null || orderId.isBlank()) {
+            openLatestVisibleOrderAndGetId();
+        }
+
+        if (isVisibleQuick(orderStatusPending, 3)) {
+            return "Pending";
+        }
+        if (isVisibleQuick(orderStatusExecuted, 3)) {
+            return "Executed";
+        }
+        if (isVisibleQuick(orderStatusRejected, 3)) {
+            return "Rejected";
+        }
+        throw new RuntimeException("Could not resolve order status from order history details");
+    }
+
+    public String extractOrderIdFromCurrentDetails() {
+        if (isVisibleQuick(orderIdLabel, 3)) {
+            try {
+                WebElement label = waitForElement(orderIdLabel, 5);
+                List<WebElement> candidates = driver().findElements(AppiumBy.className("android.widget.TextView")).stream()
+                        .filter(WebElement::isDisplayed)
+                        .filter(element -> {
+                            try {
+                                String text = element.getText();
+                                return text != null && text.matches(".*\\d{4,}.*");
+                            } catch (Exception ignored) {
+                                return false;
+                            }
+                        })
+                        .sorted(Comparator.comparingInt(element ->
+                                Math.abs((element.getRect().getY() + element.getRect().getHeight() / 2)
+                                        - (label.getRect().getY() + label.getRect().getHeight() / 2))
+                        ))
+                        .toList();
+
+                if (!candidates.isEmpty()) {
+                    return candidates.get(0).getText().trim();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        List<WebElement> numericTexts = driver().findElements(AppiumBy.className("android.widget.TextView")).stream()
+                .filter(WebElement::isDisplayed)
+                .filter(element -> {
+                    try {
+                        String text = element.getText();
+                        return text != null && text.matches(".*\\d{4,}.*");
+                    } catch (Exception ignored) {
+                        return false;
+                    }
+                })
+                .toList();
+
+        if (!numericTexts.isEmpty()) {
+            return numericTexts.get(0).getText().trim();
+        }
+
+        throw new RuntimeException("Order ID was not found on the order details screen");
+    }
+
+    public List<String> getVisibleOrderSummaries() {
+        openHistoryFromCurrentScreen();
+
+        return driver().findElements(AppiumBy.className("android.widget.TextView")).stream()
+                .filter(WebElement::isDisplayed)
+                .map(WebElement::getText)
+                .filter(text -> text != null && !text.isBlank())
+                .filter(text -> text.contains("—") || text.contains("-") || text.contains("Buy") || text.contains("Sell"))
+                .distinct()
+                .toList();
+    }
+
+    public boolean isFilterAvailable() {
+        return isVisibleQuick(filterButton, 3);
+    }
+
+    public void applyFilterIfAvailable(String filterValue) {
+        if (!isFilterAvailable()) {
+            return;
+        }
+        click(filterButton);
+        By filterOption = AppiumBy.androidUIAutomator("new UiSelector().textContains(\"" + filterValue + "\")");
+        click(filterOption);
+        pause(500);
+    }
+
+    public void clearFilterIfAvailable() {
+        if (isVisibleQuick(clearFilterButton, 2)) {
+            click(clearFilterButton);
+        }
+    }
+
+    private WebElement findLatestVisibleOrderRow() {
+        List<WebElement> rows = driver().findElements(AppiumBy.className("android.widget.TextView")).stream()
+                .filter(WebElement::isDisplayed)
+                .filter(element -> {
+                    try {
+                        String text = element.getText();
+                        return text != null && (text.contains("—") || text.contains("-") || text.contains("Buy") || text.contains("Sell"));
+                    } catch (Exception ignored) {
+                        return false;
+                    }
+                })
+                .sorted(Comparator.comparingInt(element -> element.getRect().getY()))
+                .toList();
+
+        if (rows.isEmpty()) {
+            throw new RuntimeException("No visible orders were found in Order History");
+        }
+        return rows.get(0);
+    }
+
+    private By orderIdText(String orderId) {
+        return AppiumBy.androidUIAutomator("new UiSelector().textContains(\"" + orderId + "\")");
     }
 }

@@ -1,11 +1,13 @@
 package TestObject;
 
 import PageObject.P02_LoginPage;
+import PageObject.P11_VerifyPinPage;
 import org.testng.Assert;
 
 public class LoginFlow {
     private final StartupFlow startupFlow = new StartupFlow();
     private final P02_LoginPage loginPage = new P02_LoginPage();
+    private final P11_VerifyPinPage verifyPinPage = new P11_VerifyPinPage();
 
     public void loginToHome() {
         String username = System.getProperty("login.username", "01282349004");
@@ -29,6 +31,7 @@ public class LoginFlow {
         loginPage.login(username, password);
         loginPage.handleSecurityQuestion();
         loginPage.enterPinZeroFourTimes();
+        verifyPinPage.handleVerifyPinIfPresent();
         loginPage.waitForHomeScreen();
 
         Assert.assertTrue(loginPage.isHomeDisplayed(), "Expected home screen after login flow");
