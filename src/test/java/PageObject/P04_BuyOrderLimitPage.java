@@ -5,6 +5,9 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.testng.Assert;
+import utils.GestureUtils;
+
+import java.time.Duration;
 
 public class P04_BuyOrderLimitPage extends BasePage {
 
@@ -97,21 +100,7 @@ public class P04_BuyOrderLimitPage extends BasePage {
 
 
     public void scrollToReviewOrder() {
-
-        int width = driver().manage().window().getSize().width;
-        int height = driver().manage().window().getSize().height;
-
-        int startX = width / 2;
-        int startY = (int) (height * 0.7);
-        int endY   = (int) (height * 0.3);
-
-        new io.appium.java_client.TouchAction<>(driver())
-                .press(io.appium.java_client.touch.offset.PointOption.point(startX, startY))
-                .waitAction(io.appium.java_client.touch.WaitOptions.waitOptions(
-                        java.time.Duration.ofMillis(600)))
-                .moveTo(io.appium.java_client.touch.offset.PointOption.point(startX, endY))
-                .release()
-                .perform();
+        GestureUtils.swipeByPercentage(driver(), 0.50, 0.70, 0.50, 0.30, Duration.ofMillis(600));
     }
 
 

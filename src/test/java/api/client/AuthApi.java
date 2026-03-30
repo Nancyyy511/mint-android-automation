@@ -136,14 +136,4 @@ public class AuthApi extends BaseApi {
         return question.getQuestionId() > 0;
     }
 
-    private void assertStatus(Response response, String apiName, int... expectedStatusCodes) {
-        int actualStatusCode = response.statusCode();
-        for (int expectedStatusCode : expectedStatusCodes) {
-            if (actualStatusCode == expectedStatusCode) {
-                return;
-            }
-        }
-        Assert.fail(apiName + " returned unexpected status code " + actualStatusCode
-                + ". Expected one of " + java.util.Arrays.toString(expectedStatusCodes));
-    }
 }

@@ -1,5 +1,7 @@
 package api.utils;
 
+import TestObject.FlowLogger;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.function.BooleanSupplier;
@@ -19,6 +21,39 @@ public final class RetryUtils {
             sleep(pollInterval);
         }
         throw new AssertionError("Condition was not satisfied within " + timeout.toSeconds() + " seconds");
+    }
+
+    public static <T> T retry(Supplier<T> action, int maxAttempts, int delayMs) {
+        RuntimeException lastException = null;
+        AssertionError lastAssertion = null;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                T result = action.get();
+                FlowLogger.step("RETRY", "Attempt " + attempt + "/" + maxAttempts + " succeeded");
+                return result;
+            } catch (AssertionError assertionError) {
+                lastAssertion = assertionError;
+                FlowLogger.step("RETRY", "Attempt " + attempt + "/" + maxAttempts
+                        + " assertion failed: " + assertionError.getMessage());
+            } catch (RuntimeException exception) {
+                lastException = exception;
+                FlowLogger.step("RETRY", "Attempt " + attempt + "/" + maxAttempts
+                        + " failed: " + exception.getMessage());
+            }
+
+            if (attempt < maxAttempts) {
+                sleep(Duration.ofMillis(delayMs));
+            }
+        }
+
+        if (lastAssertion != null) {
+            throw lastAssertion;
+        }
+        if (lastException != null) {
+            throw lastException;
+        }
+        throw new IllegalStateException("Retry exhausted without producing a result");
     }
 
     public static <T> T until(String description,

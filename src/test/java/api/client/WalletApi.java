@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
-import org.testng.Assert;
 
 import java.math.BigDecimal;
 
@@ -24,12 +23,12 @@ public class WalletApi extends BaseApi {
                 .get("/api/v1/transactions/cash");
 
         logResponse(path, response.asString());
-        Assert.assertEquals(response.statusCode(), 200, "Wallet balance API should return 200");
+        assertStatus(response, "Wallet balance API", 200, 201);
         ApiEnvelope<CashFlowData> envelope = read(response, new TypeReference<>() {
         });
-        Assert.assertTrue(envelope.isStatus(), "Wallet balance response should indicate success");
-        Assert.assertNotNull(envelope.getData(), "Wallet balance response data should not be null");
-        Assert.assertNotNull(envelope.getData().getCloseBalance(), "closeBalance should not be null");
+        org.testng.Assert.assertTrue(envelope.isStatus(), "Wallet balance response should indicate success");
+        org.testng.Assert.assertNotNull(envelope.getData(), "Wallet balance response data should not be null");
+        org.testng.Assert.assertNotNull(envelope.getData().getCloseBalance(), "closeBalance should not be null");
         BigDecimal balance = envelope.getData().getCloseBalance();
         logParsed("balance=" + balance.toPlainString());
         return balance;

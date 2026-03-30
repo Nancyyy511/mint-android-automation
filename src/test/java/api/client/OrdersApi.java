@@ -6,8 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
-import org.testng.Assert;
-
 public class OrdersApi extends BaseApi {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -20,14 +18,14 @@ public class OrdersApi extends BaseApi {
                 .get("/api/v1/orders/{orderId}/info", orderId);
 
         logResponse(path, response.asString());
-        Assert.assertEquals(response.statusCode(), 200, "Order details API should return 200");
+        assertStatus(response, "Order details API", 200, 201);
         ApiEnvelope<OrderItem> envelope = read(response, new TypeReference<>() {
         });
-        Assert.assertTrue(envelope.isStatus(), "Order details response should indicate success");
-        Assert.assertNotNull(envelope.getData(), "Order details data should not be null");
+        org.testng.Assert.assertTrue(envelope.isStatus(), "Order details response should indicate success");
+        org.testng.Assert.assertNotNull(envelope.getData(), "Order details data should not be null");
 
         String status = valueOrEmpty(envelope.getData().getStatus());
-        Assert.assertFalse(status.isBlank(), "Order status should not be blank");
+        org.testng.Assert.assertFalse(status.isBlank(), "Order status should not be blank");
         logParsed("orderId=" + orderId + ", status=" + status);
         return status;
     }

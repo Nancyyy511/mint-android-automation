@@ -1,23 +1,29 @@
 package api.client;
 
-import api.utils.ApiConfig;
+import api.utils.ApiRequestResponseFilter;
+import core.config.ConfigManager;
+import core.device.DeviceInfo;
+import core.device.DeviceManager;
+import core.exceptions.ApiException;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
 public abstract class BaseApi {
     private final RequestSpecification baseSpec = new RequestSpecBuilder()
-            .setBaseUri(ApiConfig.getBaseUrl())
+            .setBaseUri(ConfigManager.getBaseUrl())
             .setContentType(ContentType.JSON)
             .setAccept(ContentType.JSON)
-            .addHeader("lang", ApiConfig.getOptional("api.lang", "en"))
-            .addHeader("Accept-Language", ApiConfig.getOptional("api.acceptLanguage", "en-US"))
-            .addHeader("imei", ApiConfig.getOptional("api.imei", "emulator-5554"))
-            .addHeader("min-ios-version", ApiConfig.getOptional("api.minIosVersion", "1018"))
+            .addHeader("lang", ConfigManager.getOptional("api.lang", "en"))
+            .addHeader("Accept-Language", ConfigManager.getOptional("api.acceptLanguage", "en-US"))
+            .addHeader("imei", resolveImei())
+            .addHeader("min-ios-version", ConfigManager.getOptional("api.minIosVersion", "1018"))
             .addFilter(new RequestLoggingFilter())
             .addFilter(new ResponseLoggingFilter())
+            .addFilter(new ApiRequestResponseFilter())
             .build();
 
     protected RequestSpecification request() {
@@ -45,5 +51,42 @@ public abstract class BaseApi {
 
     protected void logParsed(String message) {
         System.out.println("[API][PARSED] " + message);
+    }
+
+    protected void assertStatus(Response response, String apiName, int... expectedStatusCodes) {
+        int actualStatusCode = response.statusCode();
+        for (int expectedStatusCode : expectedStatusCodes) {
+            if (actualStatusCode == expectedStatusCode) {
+                return;
+            }
+        }
+        throw new ApiException(apiName + " returned unexpected status code " + actualStatusCode
+                + ". Expected one of " + java.util.Arrays.toString(expectedStatusCodes)
+                + ". Response body: " + response.asString());
+    }
+
+    private static String resolveImei() {
+        String udidOverride = ConfigManager.getUdidOverride();
+        if (!udidOverride.isBlank()) {
+            return udidOverride;
+        }
+
+        String device = ConfigManager.getDevicePreference();
+        if ("real".equals(device)) {
+            return DeviceManager.getRealDevices().stream()
+                    .findFirst()
+                    .map(DeviceInfo::udid)
+                    .orElse("");
+        }
+        if ("auto".equals(device)) {
+            try {
+                return DeviceManager.getAvailableDevice().udid();
+            } catch (RuntimeException ignored) {
+            }
+        }
+        return DeviceManager.getEmulators().stream()
+                .findFirst()
+                .map(DeviceInfo::udid)
+                .orElseGet(() -> ConfigManager.getOptional("api.imei", ""));
     }
 }

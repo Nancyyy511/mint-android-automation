@@ -5,8 +5,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
+import utils.retry.RetryAnnotationTransformer;
 
-@Listeners(TestListener.class)
+@Listeners({TestListener.class, RetryAnnotationTransformer.class})
 public class BaseTest {
 
     @BeforeMethod(alwaysRun = true)

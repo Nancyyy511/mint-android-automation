@@ -1,12 +1,11 @@
 package PageObject;
 
+import TestObject.FlowLogger;
+import api.utils.RetryUtils;
 import TestObject.DriverManager;
-import io.appium.java_client.TouchAction;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.nativekey.AndroidKey;
 import io.appium.java_client.android.nativekey.KeyEvent;
-import io.appium.java_client.touch.WaitOptions;
-import io.appium.java_client.touch.offset.PointOption;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebDriverException;
@@ -16,10 +15,16 @@ import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.remote.RemoteWebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import utils.AllureUtils;
+import utils.ScreenshotUtils;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import utils.GestureUtils;
 
 public class BasePage {
 
@@ -51,6 +56,18 @@ public class BasePage {
         return waitForSeconds(seconds).until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
+    protected WebElement waitForVisible(By locator, long seconds) {
+        return waitForSeconds(seconds).until(ExpectedConditions.visibilityOfElementLocated(locator));
+    }
+
+    protected WebElement waitForClickable(By locator, long seconds) {
+        return waitForSeconds(seconds).until(ExpectedConditions.elementToBeClickable(locator));
+    }
+
+    protected WebElement waitForPresence(By locator, long seconds) {
+        return waitForSeconds(seconds).until(ExpectedConditions.presenceOfElementLocated(locator));
+    }
+
     protected void click(By locator) {
         customWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
@@ -72,15 +89,7 @@ public class BasePage {
 
         int x = element.getRect().getX() + element.getRect().getWidth() / 2;
         int y = element.getRect().getY() + element.getRect().getHeight() / 2;
-
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence tap = new Sequence(finger, 1);
-
-        tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, y));
-        tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-
-        driver().perform(Collections.singletonList(tap));
+        GestureUtils.tap(driver(), x, y);
     }
 
     protected void clickElementReliably(WebElement element, String elementName) {
@@ -137,31 +146,24 @@ public class BasePage {
 
     protected void tapAt(int x, int y) {
         System.out.println("Tapping coordinates x=" + x + ", y=" + y);
+        GestureUtils.tap(driver(), x, y);
+    }
 
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence tap = new Sequence(finger, 1);
-
-        tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, y));
-        tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-
-        driver().perform(Collections.singletonList(tap));
+    protected void clickGestureAt(int x, int y) {
+        System.out.println("Click gesture at x=" + x + ", y=" + y);
+        try {
+            driver().executeScript("mobile: clickGesture", Map.of(
+                    "x", x,
+                    "y", y
+            ));
+        } catch (Exception exception) {
+            System.out.println("mobile: clickGesture by coordinates failed. Falling back to tapAt.");
+            tapAt(x, y);
+        }
     }
 
     protected void safeSwipeLeft() {
-        int width = driver().manage().window().getSize().width;
-        int height = driver().manage().window().getSize().height;
-
-        int startX = (int) (width * 0.85);
-        int endX = (int) (width * 0.15);
-        int y = height / 2;
-
-        new TouchAction<>(driver())
-                .press(PointOption.point(startX, y))
-                .waitAction(WaitOptions.waitOptions(Duration.ofMillis(100)))
-                .moveTo(PointOption.point(endX, y))
-                .release()
-                .perform();
+        GestureUtils.swipeByPercentage(driver(), 0.85, 0.50, 0.15, 0.50, Duration.ofMillis(200));
     }
 
     protected boolean isElementDisplayed(By locator) {
@@ -179,7 +181,8 @@ public class BasePage {
 
     protected boolean clickIfVisible(By locator, int seconds) {
         try {
-            waitForSeconds(seconds).until(ExpectedConditions.elementToBeClickable(locator)).click();
+            WebElement element = waitForClickable(locator, seconds);
+            clickElementReliably(element, "Clickable element " + locator);
             return true;
         } catch (Exception exception) {
             return false;
@@ -205,19 +208,7 @@ public class BasePage {
     }
 
     protected void swipeUpSmall() {
-        int width = driver().manage().window().getSize().width;
-        int height = driver().manage().window().getSize().height;
-
-        int x = width / 2;
-        int startY = (int) (height * 0.75);
-        int endY = (int) (height * 0.4);
-
-        new TouchAction<>(driver())
-                .press(PointOption.point(x, startY))
-                .waitAction(WaitOptions.waitOptions(Duration.ofMillis(200)))
-                .moveTo(PointOption.point(x, endY))
-                .release()
-                .perform();
+        GestureUtils.swipeByPercentage(driver(), 0.50, 0.75, 0.50, 0.40, Duration.ofMillis(250));
     }
 
     protected String getText(By locator) {
@@ -235,32 +226,71 @@ public class BasePage {
     }
 
     protected void scrollDown() {
-        int width = driver().manage().window().getSize().width;
-        int height = driver().manage().window().getSize().height;
+        GestureUtils.swipeByPercentage(driver(), 0.50, 0.75, 0.50, 0.25, Duration.ofMillis(500));
+    }
 
-        int startX = width / 2;
-        int startY = (int) (height * 0.75);
-        int endY = (int) (height * 0.25);
+    protected boolean scrollToText(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
 
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 1);
+        String regex = toLooseRegex(text);
+        List<String> commands = List.of(
+                "new UiScrollable(new UiSelector().scrollable(true)).setMaxSearchSwipes(6)"
+                        + ".scrollIntoView(new UiSelector().textMatches(\"" + escapeUiAutomator(regex) + "\"))",
+                "new UiScrollable(new UiSelector().scrollable(true)).setMaxSearchSwipes(6)"
+                        + ".scrollIntoView(new UiSelector().textContains(\"" + escapeUiAutomator(firstToken(text)) + "\"))"
+        );
 
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(500), PointerInput.Origin.viewport(), startX, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+        for (String command : commands) {
+            try {
+                driver().findElement(io.appium.java_client.AppiumBy.androidUIAutomator(command));
+                FlowLogger.step("SCROLL", "Scrolled to text='" + text + "'");
+                return true;
+            } catch (Exception ignored) {
+            }
+        }
 
-        driver().perform(Collections.singletonList(swipe));
+        FlowLogger.step("SCROLL", "Could not scroll to text='" + text + "'");
+        return false;
+    }
+
+    protected <T> T retryAction(String description, Supplier<T> action, int maxAttempts, int delayMs) {
+        return RetryUtils.retry(() -> {
+            FlowLogger.step("UI_RETRY", "Running action: " + description);
+            return action.get();
+        }, maxAttempts, delayMs);
+    }
+
+    protected void logCurrentScreen(String context) {
+        String activity;
+        try {
+            activity = driver().currentActivity();
+        } catch (Exception exception) {
+            activity = "unknown";
+        }
+
+        FlowLogger.step("UI_STATE", context + " | activity=" + activity
+                + " | visibleTexts=" + visibleTextSnapshot());
+    }
+
+    protected void logAvailableElements(String context) {
+        FlowLogger.step("UI_STATE", context + " | availableElements=" + visibleElementSnapshot());
+    }
+
+    protected void captureUiDiagnostics(String label) {
+        logCurrentScreen(label);
+        logAvailableElements(label);
+        try {
+            var screenshot = ScreenshotUtils.capture(label);
+            AllureUtils.attachFile(label + " screenshot", screenshot, "image/png");
+        } catch (Exception exception) {
+            FlowLogger.step("UI_STATE", "Screenshot capture failed for " + label + ": " + exception.getMessage());
+        }
     }
 
     protected void tapByScreenPercentage(double percentX, double percentY) {
-        Dimension size = driver().manage().window().getSize();
-        int x = (int) (size.width * percentX);
-        int y = (int) (size.height * percentY);
-
-        new TouchAction<>(driver())
-                .tap(PointOption.point(x, y))
-                .perform();
+        GestureUtils.tapByPercentage(driver(), percentX, percentY);
     }
 
     protected void hideKeyboardIfVisible() {
@@ -347,5 +377,56 @@ public class BasePage {
         } catch (Exception exception) {
             throw new RuntimeException("Could not send Android key event: " + keyName, exception);
         }
+    }
+
+    private String visibleTextSnapshot() {
+        List<String> texts = driver().findElements(By.className("android.widget.TextView")).stream()
+                .filter(WebElement::isDisplayed)
+                .map(WebElement::getText)
+                .filter(text -> text != null && !text.isBlank())
+                .map(String::trim)
+                .limit(12)
+                .toList();
+        return texts.isEmpty() ? "[]" : texts.toString();
+    }
+
+    private String visibleElementSnapshot() {
+        List<String> values = new ArrayList<>();
+        for (WebElement element : driver().findElements(By.xpath("//*[@text or @content-desc]"))) {
+            try {
+                if (!element.isDisplayed()) {
+                    continue;
+                }
+                String text = element.getText();
+                String contentDesc = element.getAttribute("contentDescription");
+                String value = (text == null || text.isBlank()) ? contentDesc : text;
+                if (value != null && !value.isBlank()) {
+                    values.add(value.trim());
+                }
+            } catch (Exception ignored) {
+            }
+            if (values.size() >= 15) {
+                break;
+            }
+        }
+        return values.isEmpty() ? "[]" : values.toString();
+    }
+
+    protected String toLooseRegex(String text) {
+        String[] parts = text.trim().split("\\s+");
+        StringBuilder builder = new StringBuilder("(?i).*");
+        for (String part : parts) {
+            builder.append(java.util.regex.Pattern.quote(part)).append(".*");
+        }
+        return builder.toString();
+    }
+
+    protected String escapeUiAutomator(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    protected String firstToken(String text) {
+        String[] parts = text.trim().split("\\s+");
+        return parts.length == 0 ? text.trim() : parts[0];
     }
 }

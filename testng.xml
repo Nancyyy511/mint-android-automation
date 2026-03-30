@@ -2,6 +2,7 @@
 <suite name="Mobile Suite" parallel="methods" thread-count="2">
     <listeners>
         <listener class-name="TestObject.TestListener"/>
+        <listener class-name="utils.retry.RetryAnnotationTransformer"/>
     </listeners>
 
     <test name="Sequential Mobile Tests">

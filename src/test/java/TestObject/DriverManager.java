@@ -1,7 +1,11 @@
 package TestObject;
 
+import core.config.ConfigManager;
+import core.device.DeviceInfo;
+import core.device.DeviceManager;
+import core.driver.AndroidCapabilitiesBuilder;
+import core.driver.DriverFactory;
 import io.appium.java_client.android.AndroidDriver;
-import io.appium.java_client.android.options.UiAutomator2Options;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -13,7 +17,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class DriverManager {
@@ -27,8 +30,6 @@ public final class DriverManager {
     private static final int DEFAULT_UIAUTOMATOR2_SERVER_LAUNCH_TIMEOUT_MS = 60000;
     private static final int DEFAULT_ANDROID_INSTALL_TIMEOUT_MS = 120000;
 
-    private static final ThreadLocal<AndroidDriver> DRIVER = new ThreadLocal<>();
-    private static final ThreadLocal<WebDriverWait> WAIT = new ThreadLocal<>();
     private static final ThreadLocal<SessionConfig> SESSION_CONFIG =
             ThreadLocal.withInitial(SessionConfig::fromConfig);
 
@@ -36,13 +37,7 @@ public final class DriverManager {
     }
 
     public static void configureSession(String deviceName, String udid, Integer systemPort) {
-        SessionConfig defaults = SessionConfig.fromConfig();
-        SESSION_CONFIG.set(new SessionConfig(
-                isBlank(deviceName) ? defaults.deviceName() : deviceName.trim(),
-                isBlank(udid) ? defaults.udid() : udid.trim(),
-                systemPort == null ? defaults.systemPort() : systemPort,
-                ConfigReader.getInt("adbExecTimeoutMs", DEFAULT_ADB_EXEC_TIMEOUT_MS)
-        ));
+        SESSION_CONFIG.set(SessionConfig.resolve(deviceName, udid, systemPort));
     }
 
     public static SessionConfig getSessionConfig() {
@@ -55,6 +50,9 @@ public final class DriverManager {
         }
 
         SessionConfig sessionConfig = getSessionConfig();
+        FlowLogger.step("DRIVER", sessionConfig.isRealDevice()
+                ? "Running on REAL device: " + sessionConfig.udid()
+                : "Running on EMULATOR: " + sessionConfig.udid());
         List<URL> appiumServerUrls = resolveAppiumServerUrls();
         int maxAttempts = Math.max(1, ConfigReader.getInt("driverInitRetries", DEFAULT_DRIVER_INIT_RETRIES));
         int retryDelayMs = Math.max(0, ConfigReader.getInt("driverInitRetryDelayMs", DEFAULT_DRIVER_RETRY_DELAY_MS));
@@ -64,7 +62,7 @@ public final class DriverManager {
             logDeviceStatus(sessionConfig, "before session attempt " + attempt);
             waitUntilDeviceReady(sessionConfig);
 
-            UiAutomator2Options options = buildOptions(sessionConfig);
+            var options = AndroidCapabilitiesBuilder.build(sessionConfig);
             for (int urlIndex = 0; urlIndex < appiumServerUrls.size(); urlIndex++) {
                 URL appiumServerUrl = appiumServerUrls.get(urlIndex);
                 FlowLogger.step("DRIVER", "Starting Appium session attempt " + attempt + "/" + maxAttempts
@@ -77,7 +75,7 @@ public final class DriverManager {
                     AndroidDriver driver = new AndroidDriver(appiumServerUrl, options);
                     disableHardwareKeyboardIme(driver);
                     setDriver(driver);
-                    setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds", 6))));
+                    setWait(new WebDriverWait(driver, Duration.ofSeconds(ConfigManager.getInt("explicitWaitSeconds", 6))));
                     FlowLogger.step("DRIVER", "Appium session created successfully for udid="
                             + sessionConfig.udid() + ", systemPort=" + sessionConfig.systemPort()
                             + ", server=" + appiumServerUrl);
@@ -108,51 +106,9 @@ public final class DriverManager {
         throw lastFailure;
     }
 
-    private static UiAutomator2Options buildOptions(SessionConfig sessionConfig) {
-        UiAutomator2Options options = new UiAutomator2Options();
-        options.setPlatformName(ConfigReader.get("platformName"));
-        options.setCapability("udid", sessionConfig.udid());
-        options.setCapability("deviceName", sessionConfig.deviceName());
-        options.setAutomationName(ConfigReader.get("automationName"));
-        options.setAppPackage(ConfigReader.get("appPackage"));
-        options.setAppActivity(ConfigReader.get("appActivity"));
-        if (ConfigReader.getInt("useAppBinary", 0) == 1) {
-            FlowLogger.step("DRIVER", "Warning: APK installation is enabled via useAppBinary=1. This will slow session startup.");
-            options.setApp(ConfigReader.get("appPath"));
-        }
-        options.autoGrantPermissions();
-        options.setCapability("newCommandTimeout", 300);
-        options.setCapability("uiautomator2ServerInstallTimeout", ConfigReader.getInt(
-                "uiautomator2ServerInstallTimeoutMs",
-                DEFAULT_UIAUTOMATOR2_SERVER_INSTALL_TIMEOUT_MS
-        ));
-        options.setCapability("uiautomator2ServerLaunchTimeout", ConfigReader.getInt(
-                "uiautomator2ServerLaunchTimeoutMs",
-                DEFAULT_UIAUTOMATOR2_SERVER_LAUNCH_TIMEOUT_MS
-        ));
-        options.setCapability("androidInstallTimeout", ConfigReader.getInt(
-                "androidInstallTimeoutMs",
-                DEFAULT_ANDROID_INSTALL_TIMEOUT_MS
-        ));
-        options.setCapability("adbExecTimeout", sessionConfig.adbExecTimeoutMs());
-        options.setCapability("noReset", true);
-        options.setCapability("fullReset", false);
-        options.setCapability("dontStopAppOnReset", true);
-        options.setCapability("skipDeviceInitialization", true);
-        options.setCapability("skipServerInstallation", ConfigReader.getBoolean("skipServerInstallation", false));
-        options.setCapability("disableWindowAnimation", true);
-        options.setCapability("ignoreHiddenApiPolicyError", true);
-        options.setCapability("systemPort", sessionConfig.systemPort());
-        String remoteAdbHost = ConfigReader.getOptional("remoteAdbHost", "");
-        if (!remoteAdbHost.isBlank()) {
-            options.setCapability("remoteAdbHost", remoteAdbHost);
-        }
-        return options;
-    }
-
     private static void waitUntilDeviceReady(SessionConfig sessionConfig) {
-        int timeoutMs = Math.max(1000, ConfigReader.getInt("deviceReadyTimeoutMs", DEFAULT_DEVICE_READY_TIMEOUT_MS));
-        int pollMs = Math.max(500, ConfigReader.getInt("deviceReadyPollMs", DEFAULT_DEVICE_READY_POLL_MS));
+        int timeoutMs = Math.max(1000, ConfigManager.getInt("deviceReadyTimeoutMs", DEFAULT_DEVICE_READY_TIMEOUT_MS));
+        int pollMs = Math.max(500, ConfigManager.getInt("deviceReadyPollMs", DEFAULT_DEVICE_READY_POLL_MS));
         Instant deadline = Instant.now().plusMillis(timeoutMs);
 
         runAdbCommand(sessionConfig, "wait-for-device");
@@ -205,7 +161,7 @@ public final class DriverManager {
 
     private static void disableHardwareKeyboardIme(AndroidDriver driver) {
         try {
-            driver.executeScript("mobile: shell", Map.of(
+            driver.executeScript("mobile: shell", java.util.Map.of(
                     "command", "settings",
                     "args", List.of("put", "secure", "show_ime_with_hard_keyboard", "0")
             ));
@@ -216,38 +172,25 @@ public final class DriverManager {
     }
 
     public static AndroidDriver getDriver() {
-        return DRIVER.get();
+        return DriverFactory.getDriver();
     }
 
     public static void setDriver(AndroidDriver driver) {
-        if (driver == null) {
-            DRIVER.remove();
-            return;
-        }
-        DRIVER.set(driver);
+        DriverFactory.setDriver(driver);
     }
 
     public static WebDriverWait getWait() {
-        return WAIT.get();
+        return DriverFactory.getWait();
     }
 
     static void setWait(WebDriverWait wait) {
-        if (wait == null) {
-            WAIT.remove();
-            return;
-        }
-        WAIT.set(wait);
+        DriverFactory.setWait(wait);
     }
 
     public static void quitDriver() {
-        AndroidDriver driver = getDriver();
         try {
-            if (driver != null) {
-                driver.quit();
-            }
+            DriverFactory.quitDriver();
         } finally {
-            DRIVER.remove();
-            WAIT.remove();
             SESSION_CONFIG.remove();
             FlowLogger.step("DRIVER", "Driver disposed for thread " + Thread.currentThread().threadId());
         }
@@ -263,8 +206,7 @@ public final class DriverManager {
             FlowLogger.step("DRIVER", "Ignoring cleanup failure after unsuccessful session creation: "
                     + summarizeException(exception));
         } finally {
-            DRIVER.remove();
-            WAIT.remove();
+            DriverFactory.clear();
         }
     }
 
@@ -288,7 +230,7 @@ public final class DriverManager {
         builder.redirectErrorStream(false);
         try {
             Process process = builder.start();
-            int commandTimeoutMs = Math.max(1000, ConfigReader.getInt("adbCommandTimeoutMs", DEFAULT_ADB_COMMAND_TIMEOUT_MS));
+            int commandTimeoutMs = Math.max(1000, ConfigManager.getInt("adbCommandTimeoutMs", DEFAULT_ADB_COMMAND_TIMEOUT_MS));
             boolean finished = process.waitFor(commandTimeoutMs, TimeUnit.MILLISECONDS);
             if (!finished) {
                 process.destroyForcibly();
@@ -328,7 +270,7 @@ public final class DriverManager {
     }
 
     private static List<URL> resolveAppiumServerUrls() throws MalformedURLException {
-        URL configuredUrl = new URL(ConfigReader.get("appiumServer"));
+        URL configuredUrl = new URL(ConfigManager.getRequired("appiumServer"));
         List<URL> urls = new ArrayList<>();
         urls.add(configuredUrl);
 
@@ -371,13 +313,32 @@ public final class DriverManager {
         }
     }
 
-    public record SessionConfig(String deviceName, String udid, int systemPort, int adbExecTimeoutMs) {
+    public record SessionConfig(String deviceMode, String deviceName, String udid, int systemPort, int adbExecTimeoutMs) {
         static SessionConfig fromConfig() {
-            String udid = ConfigReader.get("udid");
-            String deviceName = ConfigReader.getOptional("deviceName", udid);
-            int systemPort = ConfigReader.getInt("systemPort", resolveSystemPort(udid));
-            int adbExecTimeoutMs = ConfigReader.getInt("adbExecTimeoutMs", DEFAULT_ADB_EXEC_TIMEOUT_MS);
-            return new SessionConfig(deviceName, udid, systemPort, adbExecTimeoutMs);
+            return fromDevice(DeviceManager.getAvailableDevice(), null, null);
+        }
+
+        static SessionConfig resolve(String deviceNameOverride, String udidOverride, Integer systemPortOverride) {
+            DeviceInfo deviceInfo = DeviceManager.getAvailableDevice(udidOverride);
+            return fromDevice(deviceInfo, deviceNameOverride, systemPortOverride);
+        }
+
+        private static SessionConfig fromDevice(DeviceInfo deviceInfo, String deviceNameOverride, Integer systemPortOverride) {
+            String deviceMode = deviceInfo.isReal() ? "real" : "emulator";
+            String udid = deviceInfo.udid();
+            String deviceName = isBlank(deviceNameOverride) ? ConfigManager.getOptional(
+                    deviceInfo.isReal() ? "real.deviceName" : "emulator.deviceName",
+                    deviceInfo.model().isBlank() ? udid : deviceInfo.model()
+            ) : deviceNameOverride.trim();
+            int systemPort = systemPortOverride == null
+                    ? ConfigManager.getInt("systemPort", resolveSystemPort(udid))
+                    : systemPortOverride;
+            int adbExecTimeoutMs = ConfigManager.getInt("adbExecTimeoutMs", DEFAULT_ADB_EXEC_TIMEOUT_MS);
+            return new SessionConfig(deviceMode, deviceName, udid, systemPort, adbExecTimeoutMs);
+        }
+
+        boolean isRealDevice() {
+            return "real".equalsIgnoreCase(deviceMode);
         }
 
         private static int resolveSystemPort(String udid) {
