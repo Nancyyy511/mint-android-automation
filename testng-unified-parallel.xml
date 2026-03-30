@@ -1,0 +1,31 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Unified Parallel Suite" parallel="tests" thread-count="3">
+    <test name="Android UI">
+        <classes>
+            <class name="TestObject.T01_OnBoardingTest"/>
+            <class name="TestObject.T02_LoginTest"/>
+        </classes>
+    </test>
+
+    <test name="iOS UI">
+        <groups>
+            <run>
+                <include name="ios"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="tests.ui.ios.IOSLaunchSmokeTest"/>
+        </classes>
+    </test>
+
+    <test name="API">
+        <groups>
+            <run>
+                <include name="api"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="tests.api.ApiAuthenticationSmokeTest"/>
+        </classes>
+    </test>
+</suite>

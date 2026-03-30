@@ -37,6 +37,10 @@ public final class ConfigManager {
         return getOptional("platformName", "Android");
     }
 
+    public static String getPlatform() {
+        return getOptional("platform", "android").toLowerCase();
+    }
+
     public static String getAppPackage() {
         return getRequired("appPackage");
     }

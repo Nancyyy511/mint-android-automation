@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="API Smoke Suite" parallel="false">
+    <test name="API Authentication Smoke">
+        <groups>
+            <run>
+                <include name="api"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="tests.api.ApiAuthenticationSmokeTest"/>
+        </classes>
+    </test>
+</suite>

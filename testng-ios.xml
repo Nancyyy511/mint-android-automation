@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="iOS Smoke Suite" parallel="false">
+    <test name="iOS Launch Smoke">
+        <groups>
+            <run>
+                <include name="ios"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="tests.ui.ios.IOSLaunchSmokeTest"/>
+        </classes>
+    </test>
+</suite>

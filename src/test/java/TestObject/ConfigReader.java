@@ -23,6 +23,10 @@ public final class ConfigReader {
         return ConfigManager.getOptional(key, defaultValue);
     }
 
+    public static String getPlatform() {
+        return ConfigManager.getPlatform();
+    }
+
     @Deprecated
     public static String getProperty(String key) {
         return get(key);
