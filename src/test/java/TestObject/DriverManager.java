@@ -196,6 +196,47 @@ public final class DriverManager {
         }
     }
 
+    public static void restartDriver() {
+        SessionConfig sessionConfig = getSessionConfig();
+        cleanupFailedInitialization();
+        configureSession(sessionConfig.deviceName(), sessionConfig.udid(), sessionConfig.systemPort());
+        try {
+            initializeDriver();
+        } catch (MalformedURLException exception) {
+            throw new RuntimeException("Failed to restart Appium session for udid=" + sessionConfig.udid(), exception);
+        }
+    }
+
+    public static void relaunchApp() {
+        AndroidDriver driver = getDriver();
+        if (driver == null) {
+            restartDriver();
+            return;
+        }
+
+        String appPackage = ConfigManager.getAppPackage();
+        String appActivity = ConfigManager.getAppActivity();
+        try {
+            driver.activateApp(appPackage);
+            FlowLogger.step("DRIVER", "App relaunched via activateApp for package=" + appPackage);
+        } catch (Exception exception) {
+            FlowLogger.step("DRIVER", "activateApp failed, falling back to startActivity for package="
+                    + appPackage + ": " + summarizeException(exception));
+            driver.executeScript("mobile: startActivity", java.util.Map.of(
+                    "intent", appPackage + "/" + appActivity
+            ));
+            FlowLogger.step("DRIVER", "App relaunched via startActivity for package=" + appPackage);
+        }
+    }
+
+    public static AdbCommandResult executeAdbCommand(String... args) {
+        return runAdbCommand(getSessionConfig(), args);
+    }
+
+    public static AdbCommandResult executeAdbShell(String... shellArgs) {
+        return runAdbShell(getSessionConfig(), shellArgs);
+    }
+
     private static void cleanupFailedInitialization() {
         AndroidDriver driver = getDriver();
         try {
@@ -367,6 +408,6 @@ public final class DriverManager {
         }
     }
 
-    private record AdbCommandResult(int exitCode, String stdout, String stderr) {
+    public record AdbCommandResult(int exitCode, String stdout, String stderr) {
     }
 }
